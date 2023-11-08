@@ -1,11 +1,12 @@
-import { CobotInstanceAccessToken, type CobotSpaceSubdomain } from '@/types/zod';
+import type { CobotSpaceId } from '@/types/zod';
+import { CobotSpaceAccessToken } from '@/types/zod';
 import { ObjectStore } from './ObjectStore';
 import keyValueStoreInstance from './storage-layer';
 
-export const instanceAccessTokenStore = new ObjectStore(
-    CobotInstanceAccessToken,
-    'CobotInstanceAccessToken',
-    ({ spaceSubdomain }: { spaceSubdomain: CobotSpaceSubdomain }) => spaceSubdomain,
+export const spaceAccessTokenStore = new ObjectStore(
+    CobotSpaceAccessToken,
+    'CobotSpaceAccessToken',
+    ({ spaceId }: { spaceId: CobotSpaceId }) => spaceId,
     keyValueStoreInstance,
     null,
 );
