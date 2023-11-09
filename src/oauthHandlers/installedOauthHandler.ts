@@ -7,15 +7,15 @@ import {
     getSpaceNavigationLinks,
     revokeAccessToken,
 } from '@/api/cobot';
-import { getCobotNavigationLinks } from '@/constants';
+import { getCobotNavigationLinks } from '@/util';
 import { spaceAccessTokenStore } from '@/storage';
 import type { ValueOrError } from '@/types/util';
-import type { CobotApiResponsePostNavigationLink } from '@/types/zod';
+import type { CobotApiResponsePostNavigationLink, OauthStateInstall } from '@/types/zod';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 export default async (
     code: string,
-    spaceSubdomain: string,
+    { spaceSubdomain }: OauthStateInstall,
     req: NextApiRequest,
     res: NextApiResponse<ValueOrError<void>>,
 ) => {

@@ -1,4 +1,6 @@
 import installedOauthHandler from '@/oauthHandlers/installedOauthHandler';
+import userOauthHandler from '@/oauthHandlers/userOauthHandler';
+import { unsealOauthState } from '@/seals';
 import type { ValueOrError } from '@/types/util';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
@@ -12,14 +14,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         return;
     }
 
-    const installStateMatch = state.match(/^install-([a-z][a-z0-9-]{0,99})$/);
-    if (installStateMatch !== null) {
-        const space = installStateMatch[1];
-        await installedOauthHandler(code, space, req, res);
+    const unsealedState = await unsealOauthState(state);
+    if (!unsealedState.ok) {
+        res.status(401).send(unsealedState);
+        return;
+    }
+    const stateObj = unsealedState.value;
+
+    if (stateObj.type === 'install') {
+        await installedOauthHandler(code, stateObj, req, res);
         return;
     }
 
-    // TODO add user auth here later
+    if (stateObj.type === 'user') {
+        await userOauthHandler(code, stateObj, req, res);
+        return;
+    }
 
     res.status(400).send({
         ok: false,

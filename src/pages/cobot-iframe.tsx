@@ -15,3 +15,5 @@ export default function Home() {
         </>
     );
 }
+
+// TODO: add redirect to /api/oauth/init-user if no iframe token is passed in query parameter

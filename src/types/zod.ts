@@ -10,6 +10,8 @@ export type CobotSpaceSubdomain = z.infer<typeof CobotSpaceSubdomain>;
 export const CobotSpaceId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/);
 export type CobotSpaceId = z.infer<typeof CobotSpaceId>;
 
+export const CobotUserId = z.string().min(1).max(500);
+
 export const CobotNavigationLinkSection = z.enum(['admin/setup', 'admin/manage', 'admin/analyze', 'members']);
 
 // Cobot API Responses
@@ -76,3 +78,31 @@ export const CobotSpaceAccessToken = z.object({
     spaceId: CobotSpaceId,
 });
 export type CobotSpaceAccessToken = z.infer<typeof CobotSpaceAccessToken>;
+
+// Sealed
+
+export const OauthStateInstall = z.object({
+    type: z.literal('install'),
+    spaceSubdomain: CobotSpaceSubdomain,
+});
+export type OauthStateInstall = z.infer<typeof OauthStateInstall>;
+
+export const OauthStateUser = z.object({
+    type: z.literal('user'),
+    spaceId: CobotSpaceId,
+    spaceSubdomain: CobotSpaceSubdomain,
+    cobotUserId: CobotUserId,
+    iframePath: z.string(),
+});
+export type OauthStateUser = z.infer<typeof OauthStateUser>;
+
+export const OauthState = OauthStateInstall.or(OauthStateUser);
+export type OauthState = z.infer<typeof OauthState>;
+
+export const IframeToken = z.object({
+    spaceId: CobotSpaceId,
+    spaceSubdomain: CobotSpaceSubdomain,
+    cobotUserId: CobotUserId,
+    cobotAccessToken: CobotAccessToken,
+});
+export type IframeToken = z.infer<typeof IframeToken>;

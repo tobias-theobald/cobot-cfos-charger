@@ -4,16 +4,16 @@ import { memo, useCallback } from 'react';
 const App = () => {
     const onSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
         // This is part of why I prefer using libs or onChange listeners here
-        const space = (
+        const spaceSubdomain = (
             event.currentTarget.elements as typeof event.currentTarget.elements & {
                 space: { value: string };
             }
         ).space.value;
-        if (space === '') {
+        if (spaceSubdomain === '') {
             return;
         }
-        const searchParams = new URLSearchParams({ space });
-        window.document.location.href = `/api/oauth/install?${searchParams.toString()}`;
+        const searchParams = new URLSearchParams({ spaceSubdomain });
+        window.document.location.href = `/api/oauth/init-install?${searchParams.toString()}`;
         event.preventDefault();
     }, []);
 

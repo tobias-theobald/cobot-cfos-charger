@@ -1,5 +1,7 @@
 import type { NextApiRequest } from 'next';
 import type { ValueOrError } from './types/util';
+import type { CobotApiRequestPostNavigationLinkBody } from './types/zod';
+import { COBOT_NAVIGATION_ITEMS } from './constants';
 
 export const logErrorAndReturnCleanMessage = (
     cleanMessage: string,
@@ -23,4 +25,18 @@ export const getBaseUrl = (req: NextApiRequest): ValueOrError<URL> => {
     }
 
     return { ok: true, value: new URL(`${hostProto}://${hostHeader}`) };
+};
+
+export const getCobotNavigationLinks = (req: NextApiRequest): ValueOrError<CobotApiRequestPostNavigationLinkBody[]> => {
+    const baseUrlResult = getBaseUrl(req);
+    if (!baseUrlResult.ok) {
+        return baseUrlResult;
+    }
+    return {
+        ok: true,
+        value: COBOT_NAVIGATION_ITEMS.map(({ iframe_url, ...remainder }) => ({
+            iframe_url: new URL(iframe_url, baseUrlResult.value).toString(),
+            ...remainder,
+        })) as CobotApiRequestPostNavigationLinkBody[],
+    };
 };
