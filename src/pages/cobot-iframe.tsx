@@ -1,17 +1,33 @@
-import Head from 'next/head';
-import { Inter } from 'next/font/google';
-
-const inter = Inter({ subsets: ['latin'] });
+import { useEffect, useState } from 'react';
+import { ExpectedIframeSearchParams } from '../types/zod';
 
 export default function Home() {
+    const [iframeToken, setIframeToken] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (iframeToken !== null) {
+            return;
+        }
+        const searchParams = new URLSearchParams(window.document.location.search);
+        const searchParamsParseResult = ExpectedIframeSearchParams.safeParse(
+            Object.fromEntries(searchParams.entries()),
+        );
+        if (!searchParamsParseResult.success) {
+            searchParams.set('iframePath', window.document.location.pathname);
+            // redirect
+            window.location.href = '/api/oauth/init-user?' + searchParams.toString();
+            return;
+        }
+        setIframeToken(searchParamsParseResult.data.iframeToken);
+    }, [iframeToken]);
+
+    if (iframeToken === null) {
+        return <div>Authenticating...</div>;
+    }
+
     return (
         <>
-            <Head>
-                <title>Create Next App</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1" />
-                <link rel="icon" href="/favicon.ico" />
-            </Head>
-            <main className={inter.className}>Hi there, hello</main>
+            <main>Hi there, hello {iframeToken}</main>
         </>
     );
 }

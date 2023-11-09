@@ -8,12 +8,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { z } from 'zod';
 
 const VerifiableQueryParameters = z.object({
-    spaceId: CobotSpaceId,
-    spaceSubdomain: CobotSpaceSubdomain,
-    cobotUserId: CobotUserId,
+    cobot_space_id: CobotSpaceId,
+    cobot_subdomain: CobotSpaceSubdomain,
+    cobot_user_id: CobotUserId,
 });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ValueOrError<never>>) {
+    console.log('Initiating user OAuth flow', req.query);
     const verifiableQueryParamsParseResult = VerifiableQueryParameters.safeParse(req.query);
     if (!verifiableQueryParamsParseResult.success) {
         console.error('VerifiableQueryParameters failed to parse', verifiableQueryParamsParseResult.error.format());
@@ -23,9 +24,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         });
         return;
     }
-    const { spaceId, spaceSubdomain, cobotUserId } = verifiableQueryParamsParseResult.data;
+    const {
+        cobot_space_id: spaceId,
+        cobot_subdomain: spaceSubdomain,
+        cobot_user_id: cobotUserId,
+    } = verifiableQueryParamsParseResult.data;
 
     const { iframePath: iframePathUnparsed } = req.query;
+    console.log({ iframePathUnparsed });
     if (
         typeof iframePathUnparsed !== 'string' ||
         COBOT_NAVIGATION_ITEMS.find(({ iframe_url }) => iframe_url === iframePathUnparsed) === undefined

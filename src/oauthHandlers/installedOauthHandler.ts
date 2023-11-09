@@ -12,6 +12,7 @@ import { spaceAccessTokenStore } from '@/storage';
 import type { ValueOrError } from '@/types/util';
 import type { CobotApiResponsePostNavigationLink, OauthStateInstall } from '@/types/zod';
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { COBOT_CLIENT_ID } from '../env';
 
 export default async (
     code: string,
@@ -41,6 +42,10 @@ export default async (
     if (!spaceAccessTokenResult.ok) {
         // This is already sanitized
         res.status(400).send(spaceAccessTokenResult);
+        return;
+    }
+    if (spaceAccessTokenResult.value.client_id !== COBOT_CLIENT_ID) {
+        res.status(400).send({ ok: false, error: 'Invalid client ID' });
         return;
     }
     const spaceAccessToken = spaceAccessTokenResult.value.token;

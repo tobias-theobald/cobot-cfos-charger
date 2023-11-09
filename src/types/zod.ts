@@ -1,4 +1,3 @@
-import { COBOT_CLIENT_ID } from '@/env';
 import { z } from 'zod';
 
 // Cobot Types
@@ -25,7 +24,7 @@ export const CobotApiResponsePostOauthAccessToken = z.object({
 // https://dev.cobot.me/api-docs/access-tokens#create-access-token-for-a-space
 export const CobotApiResponsePostOauthSpaceAccessToken = z.object({
     token: CobotAccessToken,
-    client_id: z.literal(COBOT_CLIENT_ID),
+    client_id: z.string(),
     scope: z.array(z.string()),
 });
 
@@ -106,3 +105,10 @@ export const IframeToken = z.object({
     cobotAccessToken: CobotAccessToken,
 });
 export type IframeToken = z.infer<typeof IframeToken>;
+
+export const ExpectedIframeSearchParams = z.object({
+    spaceId: CobotSpaceId,
+    spaceSubdomain: CobotSpaceSubdomain,
+    cobotUserId: CobotSpaceId,
+    iframeToken: z.string(),
+});
