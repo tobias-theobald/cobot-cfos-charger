@@ -51,7 +51,7 @@ export async function fetchWithTypeCheckedJsonResponse<T = void>({
     }
 
     if (expectedType === null) {
-        if (fetchResult.status === 204) {
+        if (fetchResult.status === 204 || fetchResult.status === 200) {
             return { ok: true, value: undefined as T };
         } else {
             return logErrorAndReturnCleanMessage('Expected response but none came');

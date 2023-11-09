@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CFOS_BASE_URL } from '../env';
+import { CFOS_BASE_URL, CFOS_RFID_ID } from '../env';
 import type { ValueOrError } from '../types/util';
 import { fetchWithTypeCheckedJsonResponse } from './base';
 
@@ -10,12 +10,13 @@ mainBaseUrl.password = '';
 mainBaseUrl.username = '';
 mainBaseUrl.pathname = 'cnf';
 
-type GetWallboxesResponse = {
+export type GetWallboxesResponse = {
     id: string;
     totalEnergyWattHours: number;
     friendlyName: string;
     address: string;
     evseWallboxState: EvseWallboxState;
+    chargingEnabled: boolean;
 }[];
 const EvsePowerbrainDevice = z.object({
     dev_type: z.literal('evse_powerbrain'), // filter out evse_powerbrain
@@ -24,6 +25,7 @@ const EvsePowerbrainDevice = z.object({
     state: z.number().int().min(0).max(5),
     dev_id: z.string(),
     total_energy: z.number(),
+    charging_enabled: z.boolean(),
 });
 type EvsePowerbrainDevice = z.infer<typeof EvsePowerbrainDevice>;
 const GetWallboxesApiResponse = z.object({
@@ -59,6 +61,7 @@ export const getWallboxes = async (): Promise<ValueOrError<GetWallboxesResponse>
             evseWallboxState: evseWallboxStateMap[typedDevice.state],
             id: typedDevice.dev_id,
             totalEnergyWattHours: typedDevice.total_energy,
+            chargingEnabled: typedDevice.charging_enabled,
         });
     }
     return {
@@ -76,6 +79,21 @@ const evseWallboxStateMap: Record<number, EvseWallboxState> = {
     5: 'error',
     6: 'offline',
 } as const;
+
+export const cfosAuthorizeWallbox = async (id: string): Promise<ValueOrError<undefined>> => {
+    console.log('fetching wallbox state');
+    const url = new URL(mainBaseUrl);
+    url.searchParams.set('cmd', 'enter_rfid');
+    url.searchParams.set('rfid', CFOS_RFID_ID);
+    url.searchParams.set('dev_id', id);
+
+    return await fetchWithTypeCheckedJsonResponse({
+        method: 'get',
+        url,
+        basicAuth,
+        expectedType: null,
+    });
+};
 
 // type GetWallboxRegistersReturn = {
 //     evseWallboxState: EvseWallboxState;

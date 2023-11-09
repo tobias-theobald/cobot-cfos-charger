@@ -22,3 +22,4 @@ export const COBOT_CLIENT_SECRET = getEnvVar(
     'Create an OAuth client at https://dev.cobot.me/oauth2_clients',
 );
 export const CFOS_BASE_URL = getEnvVar('CFOS_BASE_URL', '');
+export const CFOS_RFID_ID = getEnvVar('CFOS_RFID_ID', '');

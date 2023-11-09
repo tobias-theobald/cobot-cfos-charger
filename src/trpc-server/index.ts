@@ -1,8 +1,9 @@
 import { router } from './base';
-import { getWallboxStatus } from './wallbox';
+import { getWallboxStatus, authorizeWallbox } from './wallbox';
 
 export const appRouter = router({
     getWallboxStatus,
+    authorizeWallbox,
 });
 
 // Export type router type signature,

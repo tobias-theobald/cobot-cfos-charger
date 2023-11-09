@@ -22,7 +22,11 @@ export default function Home() {
         setIframeToken(searchParamsParseResult.data.iframeToken);
     }, [iframeToken]);
 
-    const getWallboxStatusQuery = trpc.getWallboxStatus.useQuery(undefined, { enabled: iframeToken !== null });
+    const getWallboxStatusQuery = trpc.getWallboxStatus.useQuery(undefined, {
+        enabled: iframeToken !== null,
+        refetchInterval: 3000,
+    });
+    const authorizeWallboxMutation = trpc.authorizeWallbox.useMutation();
 
     if (iframeToken === null) {
         return <div>Authenticating...</div>;
@@ -33,6 +37,22 @@ export default function Home() {
             <main>
                 <div>Hi there, hello</div>
                 <pre>{JSON.stringify(getWallboxStatusQuery.data ?? getWallboxStatusQuery.error, null, 2)}</pre>
+                <div>Set Charging State Mutation: {authorizeWallboxMutation.status}</div>
+                {getWallboxStatusQuery.data?.map((device) => (
+                    <div key={device.id}>
+                        <button
+                            type="button"
+                            disabled={!device.chargingEnabled && device.evseWallboxState !== 'vehiclePresent'}
+                            onClick={() => {
+                                authorizeWallboxMutation.mutate({
+                                    id: device.id,
+                                });
+                            }}
+                        >
+                            Authorize {device.friendlyName} ({device.id})
+                        </button>
+                    </div>
+                ))}
             </main>
         </>
     );
