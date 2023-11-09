@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { trpc } from '../trpc-client';
 import { ExpectedIframeSearchParams } from '../types/zod';
 
 export default function Home() {
@@ -21,13 +22,30 @@ export default function Home() {
         setIframeToken(searchParamsParseResult.data.iframeToken);
     }, [iframeToken]);
 
+    const cobotUserIdQuery = trpc.getCobotUserId.useQuery(undefined, { enabled: iframeToken !== null });
+    const generateGreeting = trpc.generateGreeting.useMutation();
+
+    const doGenerateGreeting = useCallback(() => {
+        generateGreeting.mutate({ name: 'John Doe' });
+    }, [generateGreeting]);
+
     if (iframeToken === null) {
         return <div>Authenticating...</div>;
     }
 
     return (
         <>
-            <main>Hi there, hello {iframeToken}</main>
+            <main>
+                <div>Hi there, hello</div>
+                <div>IFrame Token: {iframeToken}</div>
+                <div>cobotUserId: {cobotUserIdQuery.status} </div>
+                <pre>{JSON.stringify(cobotUserIdQuery.data ?? cobotUserIdQuery.error, null, 2)}</pre>
+                <div>greeting: {generateGreeting.status}</div>
+                <button type="button" onClick={doGenerateGreeting}>
+                    Generate greeting
+                </button>
+                <pre>{JSON.stringify(generateGreeting.data ?? generateGreeting.error, null, 2)}</pre>
+            </main>
         </>
     );
 }
