@@ -1,9 +1,8 @@
 import { router } from './base';
-import { generateGreeting, getCobotUserId } from './test';
+import { getWallboxStatus } from './wallbox';
 
 export const appRouter = router({
-    getCobotUserId,
-    generateGreeting,
+    getWallboxStatus,
 });
 
 // Export type router type signature,

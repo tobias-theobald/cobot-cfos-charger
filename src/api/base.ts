@@ -4,9 +4,10 @@ import type { ZodType } from 'zod';
 
 export type FetchWithTypeCheckedJsonResponseParams<T> = {
     method: 'get' | 'post' | 'delete' | 'put' | 'head';
-    url: string;
+    url: string | URL;
     expectedType: ZodType<T> | null;
     accessToken?: string;
+    basicAuth?: { username: string; password: string };
     body?: unknown | URLSearchParams | undefined;
     init?: RequestInit;
 };
@@ -15,6 +16,7 @@ export async function fetchWithTypeCheckedJsonResponse<T = void>({
     url,
     expectedType,
     accessToken,
+    basicAuth,
     body,
     init = {},
 }: FetchWithTypeCheckedJsonResponseParams<T>): Promise<ValueOrError<T>> {
@@ -35,6 +37,10 @@ export async function fetchWithTypeCheckedJsonResponse<T = void>({
     }
     if (accessToken !== undefined) {
         effectiveHeaders['authorization'] = `Bearer ${accessToken}`;
+    } else if (basicAuth !== undefined) {
+        const { username, password } = basicAuth;
+        const value = Buffer.from(`${username}:${password}`).toString('base64');
+        effectiveHeaders['authorization'] = `Basic ${value}`;
     }
 
     let fetchResult;
@@ -72,7 +78,7 @@ export async function fetchWithTypeCheckedJsonResponse<T = void>({
 
     const parseResult = expectedType.safeParse(fetchResultBodyJson);
     if (!parseResult.success) {
-        return logErrorAndReturnCleanMessage('Type check error', parseResult.error.format(), fetchResultBodyText);
+        return logErrorAndReturnCleanMessage('Type check error', parseResult.error.stack);
     }
     return { ok: true, value: parseResult.data };
 }
