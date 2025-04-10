@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import { CFOS_BASE_URL, CFOS_RFID_ID } from '../env';
 import type { ValueOrError } from '../types/util';
 import { fetchWithTypeCheckedJsonResponse } from './base';
@@ -8,7 +9,7 @@ const { username, password } = mainBaseUrl;
 const basicAuth = { username: decodeURIComponent(username), password: decodeURIComponent(password) };
 mainBaseUrl.password = '';
 mainBaseUrl.username = '';
-mainBaseUrl.pathname = 'cnf';
+mainBaseUrl.pathname = mainBaseUrl.pathname + '/cnf';
 
 export type GetWallboxesResponse = {
     id: string;

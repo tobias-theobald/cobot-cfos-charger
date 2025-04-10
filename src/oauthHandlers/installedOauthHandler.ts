@@ -1,3 +1,5 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+
 import {
     addSpaceNavigationLink,
     deleteSpaceNavigationLink,
@@ -7,11 +9,11 @@ import {
     getSpaceNavigationLinks,
     revokeAccessToken,
 } from '@/api/cobot';
-import { getCobotNavigationLinks } from '@/util';
 import { spaceAccessTokenStore } from '@/storage';
 import type { ValueOrError } from '@/types/util';
 import type { CobotApiResponsePostNavigationLink, OauthStateInstall } from '@/types/zod';
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { getCobotNavigationLinks } from '@/util';
+
 import { COBOT_CLIENT_ID } from '../env';
 
 export default async (
@@ -123,13 +125,13 @@ export default async (
         }
     }
 
-    let rediretUrl;
+    let redirectUrl;
     if (firstNavigationLinkResult === undefined) {
         console.log('First navigation link URL user URL not found, redirecting to space');
-        rediretUrl = `https://${encodeURIComponent(spaceSubdomain)}.cobot.me`;
+        redirectUrl = `https://${encodeURIComponent(spaceSubdomain)}.cobot.me`;
     } else {
         console.log('Redirecting admin to first navigation link');
-        rediretUrl = firstNavigationLinkResult.user_url;
+        redirectUrl = firstNavigationLinkResult.user_url;
     }
-    res.redirect(rediretUrl);
+    res.redirect(redirectUrl);
 };
