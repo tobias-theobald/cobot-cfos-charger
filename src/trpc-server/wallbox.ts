@@ -1,7 +1,9 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
+
 import type { GetWallboxesResponse } from '@/api/cfos';
 import { cfosAuthorizeWallbox, getWallboxes } from '@/api/cfos';
+
 import { procedure } from './base';
 
 export const getWallboxStatus = procedure.query(async ({ ctx }): Promise<GetWallboxesResponse> => {

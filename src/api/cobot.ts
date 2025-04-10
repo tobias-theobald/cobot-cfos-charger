@@ -7,6 +7,7 @@ import {
     CobotApiResponsePostOauthAccessToken,
     CobotApiResponsePostOauthSpaceAccessToken,
 } from '@/types/zod';
+
 import { fetchWithTypeCheckedJsonResponse } from './base';
 
 // https://dev.cobot.me/api-docs/oauth-flow

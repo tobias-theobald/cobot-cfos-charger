@@ -1,4 +1,5 @@
 import type { AppType } from 'next/app';
+
 import { trpc } from '../trpc-client';
 
 const MyApp: AppType = ({ Component, pageProps }) => {

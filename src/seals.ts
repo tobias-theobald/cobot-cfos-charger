@@ -1,10 +1,11 @@
+import type { SealOptions } from '@hapi/iron';
+import { defaults, seal as ironSeal, unseal as ironUnseal } from '@hapi/iron';
+import type { ZodType } from 'zod';
+
 import { IRON_PASSWORD } from './env';
 import type { ValueOrError } from './types/util';
-import type { SealOptions } from '@hapi/iron';
-import { seal as ironSeal, unseal as ironUnseal, defaults } from '@hapi/iron';
-import { logErrorAndReturnCleanMessage } from './util';
-import type { ZodType } from 'zod';
 import { IframeToken, OauthState } from './types/zod';
+import { logErrorAndReturnCleanMessage } from './util';
 
 const optionsOauthState = { ...defaults, ttl: 15 * 60 * 1000 }; // 15 min
 const optionsIframeToken = { ...defaults, ttl: 12 * 60 * 60 * 1000 }; // 12h

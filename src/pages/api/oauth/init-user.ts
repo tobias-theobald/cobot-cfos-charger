@@ -1,11 +1,12 @@
-import { COBOT_OAUTH_USER_SCOPES, COBOT_NAVIGATION_ITEMS } from '@/constants';
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { z } from 'zod';
+
+import { COBOT_NAVIGATION_ITEMS, COBOT_OAUTH_USER_SCOPES } from '@/constants';
 import { COBOT_CLIENT_ID } from '@/env';
 import { sealOauthState } from '@/seals';
 import type { ValueOrError } from '@/types/util';
 import { CobotSpaceId, CobotSpaceSubdomain, CobotUserId } from '@/types/zod';
 import { getBaseUrl } from '@/util';
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { z } from 'zod';
 
 const VerifiableQueryParameters = z.object({
     cobot_space_id: CobotSpaceId,

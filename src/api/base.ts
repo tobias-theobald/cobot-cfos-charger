@@ -1,6 +1,7 @@
+import type { ZodType } from 'zod';
+
 import type { ValueOrError } from '@/types/util';
 import { logErrorAndReturnCleanMessage } from '@/util';
-import type { ZodType } from 'zod';
 
 export type FetchWithTypeCheckedJsonResponseParams<T> = {
     method: 'get' | 'post' | 'delete' | 'put' | 'head';

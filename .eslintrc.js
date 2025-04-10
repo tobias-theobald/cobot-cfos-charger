@@ -5,6 +5,6 @@ module.exports = {
         "project": "./tsconfig.json" 
     },
     rules: {
-        "react/react-in-jsx-scope": 'off'
+        "no-console": "off",
     }
 }

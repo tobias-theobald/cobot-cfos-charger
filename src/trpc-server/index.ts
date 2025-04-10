@@ -1,5 +1,5 @@
 import { router } from './base';
-import { getWallboxStatus, authorizeWallbox } from './wallbox';
+import { authorizeWallbox, getWallboxStatus } from './wallbox';
 
 export const appRouter = router({
     getWallboxStatus,

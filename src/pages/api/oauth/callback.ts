@@ -1,8 +1,9 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+
 import installedOauthHandler from '@/oauthHandlers/installedOauthHandler';
 import userOauthHandler from '@/oauthHandlers/userOauthHandler';
 import { unsealOauthState } from '@/seals';
 import type { ValueOrError } from '@/types/util';
-import type { NextApiRequest, NextApiResponse } from 'next';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ValueOrError<void>>) {
     const { state, code } = req.query;

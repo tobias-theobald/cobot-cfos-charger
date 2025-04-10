@@ -1,7 +1,8 @@
 import type { NextApiRequest } from 'next';
+
+import { COBOT_NAVIGATION_ITEMS } from './constants';
 import type { ValueOrError } from './types/util';
 import type { CobotApiRequestPostNavigationLinkBody } from './types/zod';
-import { COBOT_NAVIGATION_ITEMS } from './constants';
 
 export const logErrorAndReturnCleanMessage = (
     cleanMessage: string,

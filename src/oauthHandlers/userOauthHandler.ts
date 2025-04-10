@@ -1,7 +1,9 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+
 import { exchangeCodeForAccessToken } from '@/api/cobot';
 import type { ValueOrError } from '@/types/util';
 import type { IframeToken, OauthStateUser } from '@/types/zod';
-import type { NextApiRequest, NextApiResponse } from 'next';
+
 import { sealIframeToken } from '../seals';
 
 export default async (
