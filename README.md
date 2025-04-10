@@ -26,20 +26,19 @@ COBOT_CLIENT_ID=...
 COBOT_CLIENT_SECRET=...
 
 # Get these values from the wallboxes. 
-# The base URL will probably look like http://admin:password@192.168.1.42
+# The production base URL will probably look like http://admin:password@192.168.1.42
 CFOS_BASE_URL=...
 # The RFID ID will be the one you use to authenticate with the wallbox, probably an 8-digit hex number IIRC.
 CFOS_RFID_ID=...
+# In the absence of actual wallboxes, we can use a mock endpoint to simulate the wallbox API. This is not tested very well!
+# If you want to use this, set CFOS_BASE_URL=http://mockuser:mockpassword@localhost:3000/api/cfos-mock and CFOS_RFID_ID=abcdef01
+ENABLE_CFOS_MOCK_ENDPOINT=false
 
 # Generate this value randomly by running `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` in your terminal
 IRON_PASSWORD=...
 
 # DB_URI will change when we switch to a different database
 DB_URI=file:./database.json
-
-# In the absence of actual wallboxes, we can use a mock endpoint to simulate the wallbox API. This is not tested very well!
-ENABLE_CFOS_MOCK_ENDPOINT=true
-# If you want to use this, set CFOS_BASE_URL=http://mockuser:mockpassword@localhost:3000/api/cfos-mock
 ```
 
 See also src/env.ts for the environment variables that are used in the code.
@@ -71,3 +70,33 @@ Go to `BASE_URL` and enter your Cobot space subdomain. This will redirect you to
 This corresponds to opening `src/pages/index.tsx`, being redirected to `src/pages/api/oauth/init-install` where we encrypt the space subdomain and put it in the state so we can be sure this is secure and that we can call the API later at the correct endpoint. Then we redirect the user to the Cobot OAuth consent page for installing the app into their space. 
 
 Afterwards, the user is returned to `src/pages/api/oauth/callback`, where we decrypt the state and get the space subdomain back. In `src/oauthHandlers/installedOauthHandler.ts` we then use the code from the URL to get an access token from Cobot, which we store in the database. We also register our entrypoints at this point. Lastly, we redirect the user to our space admin iframe.
+
+## Visit an iframe
+
+Since Cobot does not provide a way of authenticating our iframes to our backend and since storing data in a cookie does not work very well with third party iframes these days, when visiting an iframe, the app will initiate an OAuth consent flow inside the iframe for this user to get a user-scoped access token for the user accessing the iframe. The callback will encrypt / wrap (using iron) the access token and send it in the query sting to the browser after the OAuth flow. That way, our frontend then has a way of identifying itself to our backend and our backend has a stateless way of acquiring the access token for the user.
+
+For communication between our backend and our frontend we use TRPC (API endpoint in `src/pages/api/[trpc]/trpc.ts` with the router located at `src/trpc-server`). TRPC provides typechecking and immediate and proper typing of the endpoints (note that we still use TRPC v10 here), as well as the capability to use chainable middlewares for authentication. We already read the token content into the TRPC context, but there is no authorization yet.
+
+# Next steps
+
+Right now the app only consists of an admin iframe that shows pretty much the raw values we get from the wallbox and allows us to start and stop charging. The next steps are to implement the following features:
+
+* Make this a bit prettier to have an admin UI that can be used by the Coworking space staff 
+  * Allow starting a charging session for a user
+  * Allow starting a charging session wihtout a user (for immediate charging at the counter)
+  * Show a history of charging sessions
+* Make a user-facing iframe that allows users to start and stop charging sessions with charges going to their Cobot account
+
+Achieving these goals likely necessitates steps like these:
+
+* Implement authorization against Cobot in TRPC middlewares to distinguish between space admins and users
+* Implement charging session history
+  * Do this in a database or somehow store the data inside Cobot (this would be preferable, but I am not sure it is possible, maybe with https://dev.cobot.me/api-docs/activities ? These need to be human-readable though)
+    * If data is not stored inside Cobot, consider switching to a proper database. 
+    * I would prefer not having a database since if this is rolled out on a Raspberry Pi for example, wear on the MicroSD card is a concern.
+  * Allow starting and stopping charging sessions (user optional for admins)
+  * Keep track of current charging sessions
+* Implement billing
+  * Use the https://dev.cobot.me/api-docs/one-time-charges#create-charge API to create charges once the charging session is finished
+  * We will need to have the accounting code for this charge put into the app somehow
+  * Consider making the accounting code configurable by admins
