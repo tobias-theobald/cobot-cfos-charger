@@ -81,7 +81,7 @@ const evseWallboxStateMap: Record<number, EvseWallboxState> = {
     6: 'offline',
 } as const;
 
-export const cfosAuthorizeWallbox = async (id: string): Promise<ValueOrError<undefined>> => {
+export const cfosAuthorizeWallbox = async (id: string): Promise<ValueOrError<void>> => {
     console.log('authorizing wallbox', id);
     const url = new URL(mainBaseUrl);
     url.searchParams.set('cmd', 'enter_rfid');
@@ -98,7 +98,7 @@ export const cfosAuthorizeWallbox = async (id: string): Promise<ValueOrError<und
 
 // Disable charging again like this? https://www.cfos-emobility.de/en/cfos-power-brain/http-api.htm#:~:text=/cnf%3Fcmd%3Doverride_device%26dev_id%3Dd%26flags%3Df%26mamps%3Dma%26rfid%3Did%0Ad%20is%20the%20device%20ID%2C%20id%20is%20a%20possibly%20required%20RFID/PIN%2C%20flags%2C%20as%20follows%3A%0A%27C%27%3A%20Disable%20charging%20(Admin%20pwd%20or%20User%20PIN/RFID%20required)
 // UNTESTED!
-export const cfosDeauthorizeWallbox = async (id: string): Promise<ValueOrError<undefined>> => {
+export const cfosDeauthorizeWallbox = async (id: string): Promise<ValueOrError<void>> => {
     console.log('deauthorizing wallbox', id);
     const url = new URL(mainBaseUrl);
     url.searchParams.set('cmd', 'override_device');

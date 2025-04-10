@@ -13,18 +13,23 @@ export default function IframeAdmin() {
     });
     const startChargingMutation = trpc.startCharging.useMutation();
     const stopChargingMutation = trpc.stopCharging.useMutation();
-    const getMembershipsQuery = trpc.getMemberships.useQuery();
+    const getMembershipsQuery = trpc.getMemberships.useQuery(undefined, {
+        // This API is heavily rate-limited and unlikely to change much, so we can cache it until the user reloads, probably
+        refetchOnReconnect: false,
+        refetchInterval: false,
+        refetchOnMount: false,
+    });
 
     const handleStartCharging = useCallback(
-        (chargerId: string, membershipId: string | null) => {
-            startChargingMutation.mutate({ id: chargerId, membershipId });
+        (chargerId: string, membershipId: string) => {
+            startChargingMutation.mutate({ chargerId, membershipId });
         },
         [startChargingMutation],
     );
 
     const handleStopCharging = useCallback(
         (chargerId: string) => {
-            stopChargingMutation.mutate({ id: chargerId });
+            stopChargingMutation.mutate({ chargerId });
         },
         [stopChargingMutation],
     );
@@ -57,7 +62,7 @@ export default function IframeAdmin() {
             </Box>
 
             {/*TODO: Add settings modal*/}
-            {/*<SettingsModal*/}
+            {/*<SettingsDialog*/}
             {/*    open={settingsOpen}*/}
             {/*    onClose={() => setSettingsOpen(false)}*/}
             {/*    settings={settings}*/}
@@ -65,26 +70,26 @@ export default function IframeAdmin() {
             {/*    onSaveSettings={handleSaveSettings}*/}
             {/*/>*/}
 
-            <main>
-                <pre>{JSON.stringify(getWallboxStatusQuery.data ?? getWallboxStatusQuery.error, null, 2)}</pre>
-                <div>Set Charging State Mutation: {startChargingMutation.status}</div>
-                {getWallboxStatusQuery.data?.map((device) => (
-                    <div key={device.id}>
-                        <button
-                            type="button"
-                            disabled={!device.chargingEnabled && device.evseWallboxState !== 'vehiclePresent'}
-                            onClick={() => {
-                                startChargingMutation.mutate({
-                                    id: device.id,
-                                    membershipId: null,
-                                });
-                            }}
-                        >
-                            Authorize {device.friendlyName} ({device.id})
-                        </button>
-                    </div>
-                ))}
-            </main>
+            {/*<main>*/}
+            {/*    <pre>{JSON.stringify(getWallboxStatusQuery.data ?? getWallboxStatusQuery.error, null, 2)}</pre>*/}
+            {/*    <div>Set Charging State Mutation: {startChargingMutation.status}</div>*/}
+            {/*    {getWallboxStatusQuery.data?.map((device) => (*/}
+            {/*        <div key={device.id}>*/}
+            {/*            <button*/}
+            {/*                type="button"*/}
+            {/*                disabled={!device.chargingEnabled && device.evseWallboxState !== 'vehiclePresent'}*/}
+            {/*                onClick={() => {*/}
+            {/*                    startChargingMutation.mutate({*/}
+            {/*                        chargerId: device.id,*/}
+            {/*                        membershipId: MEMBERSHIP_ID_NOBODY,*/}
+            {/*                    });*/}
+            {/*                }}*/}
+            {/*            >*/}
+            {/*                Authorize {device.friendlyName} ({device.id})*/}
+            {/*            </button>*/}
+            {/*        </div>*/}
+            {/*    ))}*/}
+            {/*</main>*/}
         </>
     );
 }

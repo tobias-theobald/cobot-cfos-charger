@@ -10,7 +10,7 @@ Register an OAuth application under https://dev.cobot.me/oauth2_clients (You nee
 
 * **Name**: Anything you like such as "Electric Car Charging"
 * **Name within a space**: Anything you like such as "Electric Car Charging"
-* **Scopes** (These might change): navigation read_accounting_codes read_user write_charges read_memberships
+* **Scopes** (These might change): navigation read_accounting_codes read_user write_charges read_memberships write_activities read_bookings write_bookings
 * **Main Application URL**: `APP_BASE_URL`
 * **Redirect URI**: `APP_BASE_URL/api/oauth/callback`
 
@@ -89,7 +89,9 @@ Right now the app only consists of an admin iframe that shows pretty much the ra
 
 Achieving these goals likely necessitates steps like these:
 
-* Implement authorization against Cobot in TRPC middlewares to distinguish between space admins and users
+* Verify with the actual hardware:
+  * if stopping the charging session works properly (as this was not tested while we had hardware access)
+  * what the evseWallboxState and chargingEnabled values are and how they play together. Adjust Code in ChargerCard and chargingSessionService accordingly.
 * Implement charging session history
   * Do this in a database or somehow store the data inside Cobot (this would be preferable, but I am not sure it is possible, maybe with https://dev.cobot.me/api-docs/activities ? These need to be human-readable though)
     * If data is not stored inside Cobot, consider switching to a proper database. 

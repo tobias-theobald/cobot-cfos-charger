@@ -1,12 +1,13 @@
 import { COBOT_CLIENT_ID, COBOT_CLIENT_SECRET } from '@/env';
 import {
+    type CobotApiRequestPostActivityBody,
     type CobotApiRequestPostNavigationLinkBody,
+    CobotApiResponseGetActivities,
+    CobotApiResponseGetActivity,
     CobotApiResponseGetMemberships,
-    CobotApiResponseGetUserDetails,
-} from '@/types/zod';
-import {
     CobotApiResponseGetNavigationLinks,
     CobotApiResponseGetSpaceDetails,
+    CobotApiResponseGetUserDetails,
     CobotApiResponsePostNavigationLink,
     CobotApiResponsePostOauthAccessToken,
     CobotApiResponsePostOauthSpaceAccessToken,
@@ -122,13 +123,77 @@ export const deleteSpaceNavigationLink = async (accessToken: string, navigationL
 };
 
 // https://dev.cobot.me/api-docs/memberships#list-members
-export const listMembershipsWithIdNameEmail = async (accessToken: string, spaceSubdomain: string) => {
-    console.log('Listing memberships with id, name and email');
+export const listMembershipsWithIdNameEmail = async (
+    accessToken: string,
+    spaceSubdomain: string,
+    filterIds?: string[],
+) => {
+    console.log('Listing memberships with id, name and email', filterIds);
+
+    const searchParams = new URLSearchParams({ attributes: ['id', 'name', 'email'].join(',') });
+    if (filterIds && filterIds.length > 0) {
+        searchParams.set('ids', filterIds.join(','));
+    }
 
     return fetchWithTypeCheckedJsonResponse({
-        url: `https://${encodeURIComponent(spaceSubdomain)}.cobot.me/api/memberships?${new URLSearchParams({ attributes: ['id', 'name', 'email'].join(',') })}`,
+        url: `https://${encodeURIComponent(spaceSubdomain)}.cobot.me/api/memberships?${searchParams}`,
         method: 'get',
         accessToken,
         expectedType: CobotApiResponseGetMemberships,
+    });
+};
+
+// https://dev.cobot.me/api-docs/activities#list-activities
+export const getActivities = async (
+    accessToken: string,
+    spaceSubdomain: string,
+    params: {
+        from: string;
+        to: string;
+        types?: string[];
+        source_ids?: string[];
+        last?: number;
+    },
+) => {
+    console.log('Fetching activities');
+
+    const searchParams = new URLSearchParams();
+    searchParams.set('from', params.from);
+    searchParams.set('to', params.to);
+
+    if (params.types && params.types.length > 0) {
+        searchParams.set('types', params.types.join(','));
+    }
+
+    if (params.source_ids && params.source_ids.length > 0) {
+        searchParams.set('source_ids', params.source_ids.join(','));
+    }
+
+    if (params.last) {
+        searchParams.set('last', params.last.toString());
+    }
+
+    return fetchWithTypeCheckedJsonResponse({
+        url: `https://${encodeURIComponent(spaceSubdomain)}.cobot.me/api/activities?${searchParams}`,
+        method: 'get',
+        accessToken,
+        expectedType: CobotApiResponseGetActivities,
+    });
+};
+
+// https://dev.cobot.me/api-docs/activities#create-activity
+export const createActivity = async (
+    accessToken: string,
+    spaceSubdomain: string,
+    activityData: CobotApiRequestPostActivityBody,
+) => {
+    console.log('Creating activity');
+
+    return fetchWithTypeCheckedJsonResponse({
+        url: `https://${encodeURIComponent(spaceSubdomain)}.cobot.me/api/activities`,
+        method: 'post',
+        body: activityData,
+        accessToken,
+        expectedType: CobotApiResponseGetActivity,
     });
 };

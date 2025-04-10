@@ -1,8 +1,9 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import { cfosDeauthorizeWallbox, type GetWallboxesResponse } from '@/api/cfos';
-import { cfosAuthorizeWallbox, getWallboxes } from '@/api/cfos';
+import { getWallboxes, type GetWallboxesResponse } from '@/api/cfos';
+import { MEMBERSHIP_ID_NOBODY } from '@/constants';
+import { startChargingSession, stopChargingSession } from '@/services/chargingSessionService';
 import { CobotMembershipId } from '@/types/zod';
 
 import { adminProcedure } from './base';
@@ -19,10 +20,16 @@ export const getWallboxStatus = adminProcedure.query(async ({ ctx }): Promise<Ge
 });
 
 export const startCharging = adminProcedure
-    .input(z.object({ id: z.string(), membershipId: CobotMembershipId.nullable() }))
+    .input(z.object({ chargerId: z.string(), membershipId: CobotMembershipId.or(z.literal(MEMBERSHIP_ID_NOBODY)) }))
     .mutation(async ({ ctx, input }) => {
         // TODO store charging session in database
-        const result = await cfosAuthorizeWallbox(input.id);
+        const result = await startChargingSession(
+            ctx.userDetails,
+            ctx.cobotSpaceAccessToken,
+            ctx.spaceSubdomain,
+            input.chargerId,
+            input.membershipId,
+        );
         if (!result.ok) {
             throw new TRPCError({
                 code: 'INTERNAL_SERVER_ERROR',
@@ -32,14 +39,21 @@ export const startCharging = adminProcedure
         return result.value;
     });
 
-export const stopCharging = adminProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
-    // TODO update charging session in database
-    const result = await cfosDeauthorizeWallbox(input.id);
-    if (!result.ok) {
-        throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: `Error stopping charging: ${result.error}`,
-        });
-    }
-    return result.value;
-});
+export const stopCharging = adminProcedure
+    .input(z.object({ chargerId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+        // TODO update charging session in database
+        const result = await stopChargingSession(
+            ctx.userDetails,
+            ctx.cobotSpaceAccessToken,
+            ctx.spaceSubdomain,
+            input.chargerId,
+        );
+        if (!result.ok) {
+            throw new TRPCError({
+                code: 'INTERNAL_SERVER_ERROR',
+                message: `Error stopping charging: ${result.error}`,
+            });
+        }
+        return result.value;
+    });

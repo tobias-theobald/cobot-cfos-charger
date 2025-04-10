@@ -58,9 +58,9 @@ export const CobotApiResponseGetUserDetails = z.object({
     email: z.string(),
     memberships: z
         .object({
-            id: z.string(),
+            id: z.string(), // Membership ID with this space!!
             space_subdomain: CobotSpaceSubdomain,
-            // space_name: z.string(),
+            space_name: z.string(),
             // space_link: z.string().url(),
             // name: z.string(),
             // link: z.string().url(),
@@ -71,7 +71,7 @@ export const CobotApiResponseGetUserDetails = z.object({
             space_subdomain: CobotSpaceSubdomain,
             // space_link: z.string().url(),
             // name: z.string(),
-            // space_name: z.string(),
+            space_name: z.string(),
         })
         .array(),
 });
@@ -106,6 +106,36 @@ export const CobotApiRequestPostNavigationLinkBody = CobotApiResponsePostNavigat
     iframe_url: true,
 });
 export type CobotApiRequestPostNavigationLinkBody = z.infer<typeof CobotApiRequestPostNavigationLinkBody>;
+
+// https://dev.cobot.me/api-docs/activities
+export const CobotActivityLevel = z.enum(['ERROR', 'WARN', 'INFO']);
+export type CobotActivityLevel = z.infer<typeof CobotActivityLevel>;
+
+export const CobotActivityChannel = z.enum(['admin', 'membership']);
+export type CobotActivityChannel = z.infer<typeof CobotActivityChannel>;
+
+export const CobotActivityAttributes = z.record(z.union([z.string(), z.number(), z.boolean()]));
+export type CobotActivityAttributes = z.infer<typeof CobotActivityAttributes>;
+
+export const CobotApiResponseGetActivity = z.object({
+    created_at: z.string(),
+    type: z.string(),
+    channels: z.array(CobotActivityChannel),
+    attributes: CobotActivityAttributes.optional(),
+    level: CobotActivityLevel.optional(),
+});
+export type CobotApiResponseGetActivity = z.infer<typeof CobotApiResponseGetActivity>;
+
+export const CobotApiResponseGetActivities = z.array(CobotApiResponseGetActivity);
+export type CobotApiResponseGetActivities = z.infer<typeof CobotApiResponseGetActivities>;
+
+export const CobotApiRequestPostActivityBody = z.object({
+    text: z.string(),
+    level: CobotActivityLevel.optional(),
+    channels: z.array(CobotActivityChannel),
+    source_ids: z.array(z.string()).optional(),
+});
+export type CobotApiRequestPostActivityBody = z.infer<typeof CobotApiRequestPostActivityBody>;
 
 // Storage
 

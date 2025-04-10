@@ -1,6 +1,10 @@
 import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material';
 import type React from 'react';
+import { useEffect } from 'react';
+import { useMemo } from 'react';
+import { usePrevious } from 'react-use';
 
+import { MEMBERSHIP_ID_NOBODY } from '@/constants';
 import type { CobotMembership } from '@/types/zod';
 
 interface MembershipSelectionDialogProps {
@@ -14,6 +18,13 @@ interface MembershipSelectionDialogProps {
     confirmButtonText?: string;
 }
 
+const filterOptions = (options: CobotMembership[], state: { inputValue: string }) => {
+    const inputValue = state.inputValue.toLowerCase();
+    return options.filter(
+        (option) => option.name.toLowerCase().includes(inputValue) || option.email.toLowerCase().includes(inputValue),
+    );
+};
+
 const MembershipSelectionDialog: React.FC<MembershipSelectionDialogProps> = ({
     open,
     onClose,
@@ -24,26 +35,34 @@ const MembershipSelectionDialog: React.FC<MembershipSelectionDialogProps> = ({
     title = 'Select Member',
     confirmButtonText = 'Confirm',
 }) => {
+    const previousOpen = usePrevious(open);
+
+    useEffect(() => {
+        if (open && !previousOpen) {
+            onMembershipChange(null);
+        }
+        // This effect should only run when the dialog opens
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, previousOpen]);
+
+    const options = useMemo(
+        () => [{ name: 'No Member', email: 'Free / Pay at Counter', id: MEMBERSHIP_ID_NOBODY }, ...memberships],
+        [memberships],
+    );
+    const value = options.find((membership) => membership.id === selectedMembershipId) ?? null;
     return (
         <Dialog open={open} onClose={onClose}>
             <DialogTitle>{title}</DialogTitle>
             <DialogContent>
                 <Autocomplete
                     sx={{ mt: 2, minWidth: 300 }}
-                    options={memberships}
+                    options={options}
                     getOptionLabel={(option) => `${option.name} (${option.email})`}
                     renderInput={(params) => <TextField {...params} label="Search Member" />}
-                    value={memberships.find((membership) => membership.id === selectedMembershipId) ?? null}
+                    value={value}
                     onChange={(_, newValue) => onMembershipChange(newValue?.id ?? null)}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
-                    filterOptions={(options, state) => {
-                        const inputValue = state.inputValue.toLowerCase();
-                        return options.filter(
-                            (option) =>
-                                option.name.toLowerCase().includes(inputValue) ||
-                                option.email.toLowerCase().includes(inputValue),
-                        );
-                    }}
+                    filterOptions={filterOptions}
                 />
             </DialogContent>
             <DialogActions>

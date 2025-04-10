@@ -2,6 +2,7 @@ import { initTRPC, TRPCError } from '@trpc/server';
 import type { CreateNextContextOptions } from '@trpc/server/adapters/next';
 
 import { getUserDetails } from '@/api/cobot';
+import { USER_DETAILS_CACHE_TTL_MS } from '@/constants';
 import { unsealIframeToken } from '@/seals';
 import { spaceAccessTokenStore } from '@/storage';
 import type { CobotApiResponseGetUserDetails, CobotSpaceAccessToken } from '@/types/zod';
@@ -15,9 +16,11 @@ export type TrpcContext = {
     cobotAccessToken: string;
     cobotSpaceAccessToken: CobotSpaceAccessToken['accessToken'];
     userDetails: CobotApiResponseGetUserDetails;
-    isMember: boolean;
+    spaceMembershipId: string | null;
     isAdmin: boolean;
 };
+
+export const userDetailsCache = new Map<string, [number, CobotApiResponseGetUserDetails]>();
 
 export const createContext = async (opts: CreateNextContextOptions): Promise<TrpcContext> => {
     const authorizationHeader = opts.req.headers.authorization;
@@ -49,16 +52,35 @@ export const createContext = async (opts: CreateNextContextOptions): Promise<Trp
         });
     }
 
-    const userDetails = await getUserDetails(cobotAccessToken);
-    if (!userDetails.ok) {
-        throw new TRPCError({
-            code: 'UNAUTHORIZED',
-            message: 'Invalid access token',
-        });
+    let userDetailsResult = null;
+    if (userDetailsCache.has(cobotUserId)) {
+        const [expirationTime, userDetails] = userDetailsCache.get(cobotUserId)!;
+        if (Date.now() < expirationTime) {
+            userDetailsResult = userDetails;
+        } else {
+            userDetailsCache.delete(cobotUserId);
+        }
     }
-    console.log(userDetails);
-    const isMember = userDetails.value.memberships.some(({ id }) => id === spaceId);
-    const isAdmin = userDetails.value.admin_of.some(({ space_subdomain }) => space_subdomain === spaceSubdomain);
+
+    if (userDetailsResult === null) {
+        const userDetails = await getUserDetails(cobotAccessToken);
+        if (!userDetails.ok) {
+            throw new TRPCError({
+                code: 'UNAUTHORIZED',
+                message: 'Invalid access token',
+            });
+        }
+        userDetailsResult = userDetails.value;
+
+        // Cache the user details
+        userDetailsCache.set(cobotUserId, [Date.now() + USER_DETAILS_CACHE_TTL_MS, userDetails.value]);
+    }
+
+    const spaceMembership = userDetailsResult.memberships.find(
+        ({ space_subdomain }) => space_subdomain === spaceSubdomain,
+    );
+    const spaceMembershipId = spaceMembership?.id ?? null;
+    const isAdmin = userDetailsResult.admin_of.some(({ space_subdomain }) => space_subdomain === spaceSubdomain);
 
     return {
         spaceId,
@@ -66,8 +88,8 @@ export const createContext = async (opts: CreateNextContextOptions): Promise<Trp
         cobotUserId,
         cobotAccessToken,
         cobotSpaceAccessToken: cobotSpaceAccessToken.value.accessToken,
-        userDetails: userDetails.value,
-        isMember,
+        userDetails: userDetailsResult,
+        spaceMembershipId,
         isAdmin,
     };
 };
@@ -91,7 +113,7 @@ export const adminProcedure = t.procedure.use(async ({ ctx, next }) => {
     return await next({ ctx });
 });
 export const memberProcedure = t.procedure.use(async ({ ctx, next }) => {
-    if (!ctx.isMember) {
+    if (!ctx.spaceMembershipId) {
         throw new TRPCError({
             code: 'UNAUTHORIZED',
             message: 'You are not a member',
