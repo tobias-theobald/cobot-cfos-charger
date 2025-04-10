@@ -1,12 +1,25 @@
 import { initTRPC, TRPCError } from '@trpc/server';
 import type { CreateNextContextOptions } from '@trpc/server/adapters/next';
 
-import { unsealIframeToken } from '../seals';
-import type { IframeToken } from '../types/zod';
+import { getUserDetails } from '@/api/cobot';
+import { unsealIframeToken } from '@/seals';
+import { spaceAccessTokenStore } from '@/storage';
+import type { CobotApiResponseGetUserDetails, CobotSpaceAccessToken } from '@/types/zod';
 
 const authorizationHeaderPrefix = 'bearer ';
 
-export const createContext = async (opts: CreateNextContextOptions): Promise<IframeToken> => {
+export type TrpcContext = {
+    spaceId: string;
+    spaceSubdomain: string;
+    cobotUserId: string;
+    cobotAccessToken: string;
+    cobotSpaceAccessToken: CobotSpaceAccessToken['accessToken'];
+    userDetails: CobotApiResponseGetUserDetails;
+    isMember: boolean;
+    isAdmin: boolean;
+};
+
+export const createContext = async (opts: CreateNextContextOptions): Promise<TrpcContext> => {
     const authorizationHeader = opts.req.headers.authorization;
     if (
         typeof authorizationHeader !== 'string' ||
@@ -26,7 +39,37 @@ export const createContext = async (opts: CreateNextContextOptions): Promise<Ifr
         });
     }
 
-    return iframeTokenUnsealResult.value;
+    const { spaceId, spaceSubdomain, cobotUserId, cobotAccessToken } = iframeTokenUnsealResult.value;
+
+    const cobotSpaceAccessToken = await spaceAccessTokenStore.get({ spaceId });
+    if (!cobotSpaceAccessToken.ok || !cobotSpaceAccessToken.value) {
+        throw new TRPCError({
+            code: 'UNAUTHORIZED',
+            message: 'Missing space access token',
+        });
+    }
+
+    const userDetails = await getUserDetails(cobotAccessToken);
+    if (!userDetails.ok) {
+        throw new TRPCError({
+            code: 'UNAUTHORIZED',
+            message: 'Invalid access token',
+        });
+    }
+    console.log(userDetails);
+    const isMember = userDetails.value.memberships.some(({ id }) => id === spaceId);
+    const isAdmin = userDetails.value.admin_of.some(({ space_subdomain }) => space_subdomain === spaceSubdomain);
+
+    return {
+        spaceId,
+        spaceSubdomain,
+        cobotUserId,
+        cobotAccessToken,
+        cobotSpaceAccessToken: cobotSpaceAccessToken.value.accessToken,
+        userDetails: userDetails.value,
+        isMember,
+        isAdmin,
+    };
 };
 
 // Avoid exporting the entire t-object
@@ -37,4 +80,22 @@ const t = initTRPC.context<typeof createContext>().create();
 
 // Base router and procedure helpers
 export const router = t.router;
-export const procedure = t.procedure;
+
+export const adminProcedure = t.procedure.use(async ({ ctx, next }) => {
+    if (!ctx.isAdmin) {
+        throw new TRPCError({
+            code: 'UNAUTHORIZED',
+            message: 'You are not an admin',
+        });
+    }
+    return await next({ ctx });
+});
+export const memberProcedure = t.procedure.use(async ({ ctx, next }) => {
+    if (!ctx.isMember) {
+        throw new TRPCError({
+            code: 'UNAUTHORIZED',
+            message: 'You are not a member',
+        });
+    }
+    return await next({ ctx });
+});

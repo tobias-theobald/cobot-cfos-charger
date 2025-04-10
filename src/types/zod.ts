@@ -9,6 +9,9 @@ export type CobotSpaceSubdomain = z.infer<typeof CobotSpaceSubdomain>;
 export const CobotSpaceId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/);
 export type CobotSpaceId = z.infer<typeof CobotSpaceId>;
 
+export const CobotMembershipId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/);
+export type CobotMembershipId = z.infer<typeof CobotMembershipId>;
+
 export const CobotUserId = z.string().min(1).max(500);
 
 export const CobotNavigationLinkSection = z.enum(['admin/setup', 'admin/manage', 'admin/analyze', 'members']);
@@ -48,6 +51,43 @@ export const CobotApiResponseGetSpaceDetails = z.object({
     time_zone_offset: z.number(),
     hour_format: z.number(),
 });
+
+// https://dev.cobot.me/api-docs/memberships#list-members
+export const CobotApiResponseGetUserDetails = z.object({
+    id: CobotUserId,
+    email: z.string(),
+    memberships: z
+        .object({
+            id: z.string(),
+            space_subdomain: CobotSpaceSubdomain,
+            // space_name: z.string(),
+            // space_link: z.string().url(),
+            // name: z.string(),
+            // link: z.string().url(),
+        })
+        .array(),
+    admin_of: z
+        .object({
+            space_subdomain: CobotSpaceSubdomain,
+            // space_link: z.string().url(),
+            // name: z.string(),
+            // space_name: z.string(),
+        })
+        .array(),
+});
+export type CobotApiResponseGetUserDetails = z.infer<typeof CobotApiResponseGetUserDetails>;
+
+// https://dev.cobot.me/api-docs/memberships#list-members
+export const CobotApiResponseGetMemberships = z
+    .object({
+        id: CobotMembershipId,
+        name: z.string(),
+        email: z.string(),
+    })
+    .array();
+export type CobotApiResponseGetMemberships = z.infer<typeof CobotApiResponseGetMemberships>;
+
+export type CobotMembership = CobotApiResponseGetMemberships[number];
 
 // https://dev.cobot.me/api-docs/navigation-links#list-navigation-links
 export const CobotApiResponsePostNavigationLink = z.object({

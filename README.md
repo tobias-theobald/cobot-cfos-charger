@@ -10,7 +10,7 @@ Register an OAuth application under https://dev.cobot.me/oauth2_clients (You nee
 
 * **Name**: Anything you like such as "Electric Car Charging"
 * **Name within a space**: Anything you like such as "Electric Car Charging"
-* **Scopes** (These might change): navigation read_accounting_codes read_user write_charges
+* **Scopes** (These might change): navigation read_accounting_codes read_user write_charges read_memberships
 * **Main Application URL**: `APP_BASE_URL`
 * **Redirect URI**: `APP_BASE_URL/api/oauth/callback`
 
@@ -96,7 +96,13 @@ Achieving these goals likely necessitates steps like these:
     * I would prefer not having a database since if this is rolled out on a Raspberry Pi for example, wear on the MicroSD card is a concern.
   * Allow starting and stopping charging sessions (user optional for admins)
   * Keep track of current charging sessions
+  * Consider how to know when the charging session ends when it is not stopped via our API (regular polling?)
 * Implement billing
   * Use the https://dev.cobot.me/api-docs/one-time-charges#create-charge API to create charges once the charging session is finished
   * We will need to have the accounting code for this charge put into the app somehow
   * Consider making the accounting code configurable by admins
+
+# Further reading
+
+* [Cobot API documentation](https://dev.cobot.me/api-docs/)
+* [CFOS API documentation](https://www.cfos-emobility.de/en/cfos-power-brain/http-api.htm)

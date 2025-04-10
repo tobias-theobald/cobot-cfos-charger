@@ -84,7 +84,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     updateWallboxEnergy();
 
     // Handle different CFOS commands
-    const { cmd, dev_id, rfid } = req.query;
+    const { cmd, dev_id, rfid, flags } = req.query;
 
     // Command: get_dev_info - returns all wallboxes
     if (cmd === 'get_dev_info') {
@@ -120,6 +120,23 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
             wallbox.state = 2; // vehiclePresent
             wallbox.charging_enabled = false;
         }
+
+        return res.status(200).json({});
+    }
+
+    // handle disconnect command
+    if (cmd === 'override_device' && typeof dev_id === 'string' && typeof rfid === 'string' && flags === 'C') {
+        const wallbox = mockWallboxes.find((wb) => wb.dev_id === dev_id);
+
+        if (!wallbox) {
+            return res.status(404).json({ error: `Wallbox with ID ${dev_id} not found` });
+        }
+        if (rfid !== MOCK_CFOS_RFID_ID) {
+            return res.status(403).json({ error: 'Invalid RFID ID' });
+        }
+
+        wallbox.state = 1; // free
+        wallbox.charging_enabled = false;
 
         return res.status(200).json({});
     }

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 
-import { trpc } from '../trpc-client';
-import { ExpectedIframeSearchParams } from '../types/zod';
+import IframeAdmin from '@/components/IframeAdmin';
+import { ExpectedIframeSearchParams } from '@/types/zod';
 
 export default function Home() {
+    // Cannot use initializer function here because it relies on window which is not available in SSR
     const [iframeToken, setIframeToken] = useState<string | null>(null);
+    const [resizeObserver, setResizeObserver] = useState<ResizeObserver | null>(null);
 
     useEffect(() => {
         if (iframeToken !== null) {
@@ -23,38 +25,30 @@ export default function Home() {
         setIframeToken(searchParamsParseResult.data.iframeToken);
     }, [iframeToken]);
 
-    const getWallboxStatusQuery = trpc.getWallboxStatus.useQuery(undefined, {
-        enabled: iframeToken !== null,
-        refetchInterval: 3000,
-    });
-    const authorizeWallboxMutation = trpc.authorizeWallbox.useMutation();
+    useEffect(() => {
+        let observer: ResizeObserver | null = resizeObserver;
+        if (observer === null) {
+            observer = new ResizeObserver((entries) => {
+                for (const entry of entries) {
+                    if (entry.target === document.body) {
+                        const height = entry.contentRect.height;
+                        window.parent.postMessage(JSON.stringify({ frameHeight: height }), '*');
+                    }
+                }
+            });
+            setResizeObserver(observer);
+        }
+        observer.observe(document.body);
+        return () => {
+            if (observer !== null) {
+                observer.unobserve(document.body);
+            }
+        };
+    }, [resizeObserver]);
 
     if (iframeToken === null) {
         return <div>Authenticating...</div>;
     }
 
-    return (
-        <>
-            <main>
-                <div>Hi there, hello</div>
-                <pre>{JSON.stringify(getWallboxStatusQuery.data ?? getWallboxStatusQuery.error, null, 2)}</pre>
-                <div>Set Charging State Mutation: {authorizeWallboxMutation.status}</div>
-                {getWallboxStatusQuery.data?.map((device) => (
-                    <div key={device.id}>
-                        <button
-                            type="button"
-                            disabled={!device.chargingEnabled && device.evseWallboxState !== 'vehiclePresent'}
-                            onClick={() => {
-                                authorizeWallboxMutation.mutate({
-                                    id: device.id,
-                                });
-                            }}
-                        >
-                            Authorize {device.friendlyName} ({device.id})
-                        </button>
-                    </div>
-                ))}
-            </main>
-        </>
-    );
+    return <IframeAdmin />;
 }

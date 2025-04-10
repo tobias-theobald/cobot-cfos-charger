@@ -1,4 +1,10 @@
-export const COBOT_OAUTH_ADMIN_SCOPES = ['navigation', 'write_charges', 'read_user'];
+export const COBOT_OAUTH_ADMIN_SCOPES = [
+    'navigation',
+    'read_accounting_codes',
+    'write_charges',
+    'read_user',
+    'read_memberships',
+];
 export const COBOT_OAUTH_USER_SCOPES = ['read_user'];
 
 export const COBOT_NAVIGATION_ITEMS = [

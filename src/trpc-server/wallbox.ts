@@ -1,12 +1,13 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import type { GetWallboxesResponse } from '@/api/cfos';
+import { cfosDeauthorizeWallbox, type GetWallboxesResponse } from '@/api/cfos';
 import { cfosAuthorizeWallbox, getWallboxes } from '@/api/cfos';
+import { CobotMembershipId } from '@/types/zod';
 
-import { procedure } from './base';
+import { adminProcedure } from './base';
 
-export const getWallboxStatus = procedure.query(async ({ ctx }): Promise<GetWallboxesResponse> => {
+export const getWallboxStatus = adminProcedure.query(async ({ ctx }): Promise<GetWallboxesResponse> => {
     const result = await getWallboxes();
     if (!result.ok) {
         throw new TRPCError({
@@ -17,15 +18,27 @@ export const getWallboxStatus = procedure.query(async ({ ctx }): Promise<GetWall
     return result.value;
 });
 
-export const authorizeWallbox = procedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
-    // TODO check if this is possible
-    // TODO store in database who started the session
-    // TODO start charging session
-    const result = await cfosAuthorizeWallbox(input.id);
+export const startCharging = adminProcedure
+    .input(z.object({ id: z.string(), membershipId: CobotMembershipId.nullable() }))
+    .mutation(async ({ ctx, input }) => {
+        // TODO store charging session in database
+        const result = await cfosAuthorizeWallbox(input.id);
+        if (!result.ok) {
+            throw new TRPCError({
+                code: 'INTERNAL_SERVER_ERROR',
+                message: `Error starting charging: ${result.error}`,
+            });
+        }
+        return result.value;
+    });
+
+export const stopCharging = adminProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
+    // TODO update charging session in database
+    const result = await cfosDeauthorizeWallbox(input.id);
     if (!result.ok) {
         throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
-            message: `Error fetching Wallbox status: ${result.error}`,
+            message: `Error stopping charging: ${result.error}`,
         });
     }
     return result.value;

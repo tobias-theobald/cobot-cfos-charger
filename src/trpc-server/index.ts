@@ -1,9 +1,14 @@
+import { getMemberships } from '@/trpc-server/cobot';
+
 import { router } from './base';
-import { authorizeWallbox, getWallboxStatus } from './wallbox';
+import { getWallboxStatus, startCharging, stopCharging } from './wallbox';
 
 export const appRouter = router({
     getWallboxStatus,
-    authorizeWallbox,
+    startCharging,
+    stopCharging,
+
+    getMemberships,
 });
 
 // Export type router type signature,

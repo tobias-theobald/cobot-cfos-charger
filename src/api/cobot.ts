@@ -1,5 +1,9 @@
 import { COBOT_CLIENT_ID, COBOT_CLIENT_SECRET } from '@/env';
-import type { CobotApiRequestPostNavigationLinkBody } from '@/types/zod';
+import {
+    type CobotApiRequestPostNavigationLinkBody,
+    CobotApiResponseGetMemberships,
+    CobotApiResponseGetUserDetails,
+} from '@/types/zod';
 import {
     CobotApiResponseGetNavigationLinks,
     CobotApiResponseGetSpaceDetails,
@@ -64,6 +68,18 @@ export const revokeAccessToken = async (accessToken: string) => {
     });
 };
 
+// https://dev.cobot.me/api-docs/users#get-user-details
+export const getUserDetails = async (accessToken: string) => {
+    console.log('Fetching user details for current user');
+
+    return fetchWithTypeCheckedJsonResponse({
+        url: `https://www.cobot.me/api/user`,
+        method: 'get',
+        accessToken,
+        expectedType: CobotApiResponseGetUserDetails,
+    });
+};
+
 // https://dev.cobot.me/api-docs/navigation-links#list-navigation-links
 export const getSpaceNavigationLinks = async (accessToken: string, spaceSubdomain: string) => {
     console.log('Fetching registered navigation links');
@@ -102,5 +118,17 @@ export const deleteSpaceNavigationLink = async (accessToken: string, navigationL
         method: 'delete',
         accessToken,
         expectedType: null,
+    });
+};
+
+// https://dev.cobot.me/api-docs/memberships#list-members
+export const listMembershipsWithIdNameEmail = async (accessToken: string, spaceSubdomain: string) => {
+    console.log('Listing memberships with id, name and email');
+
+    return fetchWithTypeCheckedJsonResponse({
+        url: `https://${encodeURIComponent(spaceSubdomain)}.cobot.me/api/memberships?${new URLSearchParams({ attributes: ['id', 'name', 'email'].join(',') })}`,
+        method: 'get',
+        accessToken,
+        expectedType: CobotApiResponseGetMemberships,
     });
 };
