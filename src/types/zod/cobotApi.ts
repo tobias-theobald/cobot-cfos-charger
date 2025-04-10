@@ -1,22 +1,19 @@
+// Cobot Types
 import { z } from 'zod';
 
-// Cobot Types
 export const CobotAccessToken = z.string().min(1).max(500);
-
 export const CobotSpaceSubdomain = z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/);
 export type CobotSpaceSubdomain = z.infer<typeof CobotSpaceSubdomain>;
-
 export const CobotSpaceId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/);
 export type CobotSpaceId = z.infer<typeof CobotSpaceId>;
-
 export const CobotMembershipId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/);
 export type CobotMembershipId = z.infer<typeof CobotMembershipId>;
-
+export const CobotResourceId = z.string().min(1).max(100);
+export type CobotResourceId = z.infer<typeof CobotResourceId>;
+export const CobotBookingId = z.string().min(1).max(100);
+export type CobotBookingId = z.infer<typeof CobotBookingId>;
 export const CobotUserId = z.string().min(1).max(500);
-
 export const CobotNavigationLinkSection = z.enum(['admin/setup', 'admin/manage', 'admin/analyze', 'members']);
-
-// Cobot API Responses
 
 // https://dev.cobot.me/api-docs/oauth-flow
 export const CobotApiResponsePostOauthAccessToken = z.object({
@@ -97,8 +94,8 @@ export const CobotApiResponsePostNavigationLink = z.object({
     url: z.string().url(),
     user_url: z.string().url(),
 });
-export type CobotApiResponsePostNavigationLink = z.infer<typeof CobotApiResponsePostNavigationLink>;
 
+export type CobotApiResponsePostNavigationLink = z.infer<typeof CobotApiResponsePostNavigationLink>;
 export const CobotApiResponseGetNavigationLinks = z.array(CobotApiResponsePostNavigationLink);
 export const CobotApiRequestPostNavigationLinkBody = CobotApiResponsePostNavigationLink.pick({
     section: true,
@@ -137,48 +134,85 @@ export const CobotApiRequestPostActivityBody = z.object({
 });
 export type CobotApiRequestPostActivityBody = z.infer<typeof CobotApiRequestPostActivityBody>;
 
-// Storage
-
-export const FileSystemStorageFormat = z.record(z.unknown());
-export type FileSystemStorageFormat = z.infer<typeof FileSystemStorageFormat>;
-
-export const CobotSpaceAccessToken = z.object({
-    accessToken: CobotAccessToken,
-    spaceId: CobotSpaceId,
+// https://dev.cobot.me/api-docs/resources#list-resources
+export const CobotResourceBookingTime = z.object({
+    from: z.string(),
+    to: z.string(),
+    weekdays: z.array(z.number().min(1).max(7)),
 });
-export type CobotSpaceAccessToken = z.infer<typeof CobotSpaceAccessToken>;
 
-// Sealed
-
-export const OauthStateInstall = z.object({
-    type: z.literal('install'),
-    spaceSubdomain: CobotSpaceSubdomain,
+export const CobotApiResponseGetResource = z.object({
+    id: CobotResourceId,
+    name: z.string(),
+    price_per_hour: z.string(),
+    tax_rate: z.string(),
+    hidden: z.boolean(),
+    capacity: z.number(),
+    currency: z.string(),
+    description: z.string().nullable(),
+    cancellation_period: z.number(),
+    can_book: z.boolean(),
+    color: z.string().nullable(),
+    photo: z.string().url().nullable(),
+    min_booking_duration: z.number().nullable(),
+    max_booking_duration: z.number().nullable(),
+    booking_url: z.string().url(),
+    booking_times: z.array(CobotResourceBookingTime),
 });
-export type OauthStateInstall = z.infer<typeof OauthStateInstall>;
+export type CobotApiResponseGetResource = z.infer<typeof CobotApiResponseGetResource>;
 
-export const OauthStateUser = z.object({
-    type: z.literal('user'),
-    spaceId: CobotSpaceId,
-    spaceSubdomain: CobotSpaceSubdomain,
-    cobotUserId: CobotUserId,
-    iframePath: z.string(),
+export const CobotApiResponseGetResources = z.array(CobotApiResponseGetResource);
+export type CobotApiResponseGetResources = z.infer<typeof CobotApiResponseGetResources>;
+
+// https://dev.cobot.me/api-docs/bookings
+export const CobotBookingMembership = z.object({
+    id: CobotMembershipId,
+    name: z.string(),
+    email: z.string().email().optional(),
 });
-export type OauthStateUser = z.infer<typeof OauthStateUser>;
+export type CobotBookingMembership = z.infer<typeof CobotBookingMembership>;
 
-export const OauthState = OauthStateInstall.or(OauthStateUser);
-export type OauthState = z.infer<typeof OauthState>;
-
-export const IframeToken = z.object({
-    spaceId: CobotSpaceId,
-    spaceSubdomain: CobotSpaceSubdomain,
-    cobotUserId: CobotUserId,
-    cobotAccessToken: CobotAccessToken,
+export const CobotBookingResource = z.object({
+    id: CobotResourceId,
+    name: z.string(),
+    url: z.string().url().optional(),
 });
-export type IframeToken = z.infer<typeof IframeToken>;
+export type CobotBookingResource = z.infer<typeof CobotBookingResource>;
 
-export const ExpectedIframeSearchParams = z.object({
-    spaceId: CobotSpaceId,
-    spaceSubdomain: CobotSpaceSubdomain,
-    cobotUserId: CobotSpaceId,
-    iframeToken: z.string(),
+export const CobotApiResponseGetBooking = z.object({
+    id: CobotBookingId,
+    from: z.string(), // ISO datetime
+    to: z.string(), // ISO datetime
+    title: z.string().nullable(),
+    comments: z.string().nullable(),
+    price: z.string(),
+    currency: z.string(),
+    paid: z.boolean().optional(),
+    canceled: z.boolean().optional(),
+    can_cancel: z.boolean().optional(),
+    can_change: z.boolean().optional(),
+    membership: CobotBookingMembership.nullable(),
+    resource: CobotBookingResource,
+    units: z.number().int().positive().optional(),
 });
+export type CobotApiResponseGetBooking = z.infer<typeof CobotApiResponseGetBooking>;
+
+export const CobotApiResponseGetBookings = z.array(CobotApiResponseGetBooking);
+export type CobotApiResponseGetBookings = z.infer<typeof CobotApiResponseGetBookings>;
+
+export const CobotApiRequestPostBookingBody = z.object({
+    from: z.string(), // ISO datetime
+    to: z.string(), // ISO datetime
+    title: z.string().optional(),
+    comments: z.string().optional(),
+    membership_id: CobotMembershipId.optional(),
+    units: z.number().int().positive().optional(),
+    price: z.number().optional(),
+    has_custom_price: z.boolean().optional(),
+    can_cancel: z.boolean().optional(),
+    can_change: z.boolean().optional(),
+});
+export type CobotApiRequestPostBookingBody = z.infer<typeof CobotApiRequestPostBookingBody>;
+
+export const CobotApiRequestPutBookingBody = CobotApiRequestPostBookingBody.partial();
+export type CobotApiRequestPutBookingBody = z.infer<typeof CobotApiRequestPutBookingBody>;

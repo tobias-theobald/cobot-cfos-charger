@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { usePrevious } from 'react-use';
 
 import { MEMBERSHIP_ID_NOBODY } from '@/constants';
-import type { CobotMembership } from '@/types/zod';
+import type { CobotMembership } from '@/types/zod/cobotApi';
 
 interface MembershipSelectionDialogProps {
     open: boolean;

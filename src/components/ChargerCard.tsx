@@ -10,15 +10,17 @@ import {
 import { Box, Button, Card, CardContent, Chip, Typography } from '@mui/material';
 import { useState } from 'react';
 
-import type { EvseWallboxState, GetWallboxesResponse } from '@/api/cfos';
 import MembershipSelectionDialog from '@/components/MembershipSelectionDialog';
-import type { CobotApiResponseGetMemberships } from '@/types/zod';
+import type { EvseWallboxState, GetWallboxesResponse } from '@/types/zod/cfos';
+import type { CobotApiResponseGetMemberships } from '@/types/zod/cobotApi';
 
 interface ChargerCardProps {
     charger: GetWallboxesResponse[number];
     memberships: CobotApiResponseGetMemberships;
     onStartCharging: (chargerId: string, membershipId: string) => void;
     onStopCharging: (chargerId: string) => void;
+    loading: boolean;
+    otherError?: string;
 }
 
 const getStatusColor = (status: EvseWallboxState): string => {
@@ -83,7 +85,14 @@ const formatDuration = (isoString: string) => {
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 };
 
-const ChargerCard: React.FC<ChargerCardProps> = ({ charger, memberships, onStartCharging, onStopCharging }) => {
+const ChargerCard: React.FC<ChargerCardProps> = ({
+    charger,
+    memberships,
+    onStartCharging,
+    onStopCharging,
+    loading,
+    otherError,
+}) => {
     const [openDialog, setOpenDialog] = useState(false);
     const [selectedMembershipId, setSelectedMembershipId] = useState<string | null>(null);
 
@@ -114,7 +123,8 @@ const ChargerCard: React.FC<ChargerCardProps> = ({ charger, memberships, onStart
     const canStopCharging = charger.evseWallboxState === 'charging';
 
     // Check if charger is in an error state or offline
-    const isInErrorState = charger.evseWallboxState === 'error' || charger.evseWallboxState === 'offline';
+    const isInErrorState =
+        !!otherError || charger.evseWallboxState === 'error' || charger.evseWallboxState === 'offline';
 
     return (
         <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', minWidth: 300 }}>
@@ -189,6 +199,8 @@ const ChargerCard: React.FC<ChargerCardProps> = ({ charger, memberships, onStart
                             startIcon={<PlayCircle />}
                             onClick={() => setOpenDialog(true)}
                             fullWidth
+                            disabled={loading}
+                            loading={loading}
                         >
                             Start Charging
                         </Button>
@@ -201,14 +213,17 @@ const ChargerCard: React.FC<ChargerCardProps> = ({ charger, memberships, onStart
                             startIcon={<StopCircle />}
                             onClick={handleStopCharging}
                             fullWidth
+                            disabled={loading}
+                            loading={loading}
                         >
                             Stop Charging
                         </Button>
                     )}
 
                     {isInErrorState && (
-                        <Button variant="outlined" color="error" fullWidth disabled>
-                            {charger.evseWallboxState === 'offline' ? 'Charger Offline' : 'Charger Error'}
+                        <Button variant="outlined" color="error" fullWidth disabled loading={loading}>
+                            {otherError ??
+                                (charger.evseWallboxState === 'offline' ? 'Charger Offline' : 'Charger Error')}
                         </Button>
                     )}
                 </Box>

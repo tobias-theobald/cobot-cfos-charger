@@ -9,9 +9,10 @@ import {
     getSpaceNavigationLinks,
     revokeAccessToken,
 } from '@/api/cobot';
-import { spaceAccessTokenStore } from '@/storage';
+import { spaceSettingsStore } from '@/storage';
 import type { ValueOrError } from '@/types/util';
-import type { CobotApiResponsePostNavigationLink, OauthStateInstall } from '@/types/zod';
+import type { CobotApiResponsePostNavigationLink } from '@/types/zod/cobotApi';
+import type { OauthStateInstall } from '@/types/zod/other';
 import { getCobotNavigationLinks } from '@/util';
 
 import { COBOT_CLIENT_ID } from '../env';
@@ -59,9 +60,12 @@ export default async (
         return;
     }
 
-    const spaceTokenSetResult = await spaceAccessTokenStore.set({
+    const spaceTokenSetResult = await spaceSettingsStore.set({
         spaceId,
         accessToken: spaceAccessToken,
+        spaceSubdomain,
+        resourceMapping: {},
+        pricePerKWh: 0,
     });
     if (!spaceTokenSetResult.ok) {
         res.status(500).send(spaceTokenSetResult);

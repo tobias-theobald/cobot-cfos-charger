@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import IframeAdmin from '@/components/IframeAdmin';
-import { ExpectedIframeSearchParams } from '@/types/zod';
+import { ExpectedIframeSearchParams } from '@/types/zod/other';
 
 export default function Home() {
     // Cannot use initializer function here because it relies on window which is not available in SSR

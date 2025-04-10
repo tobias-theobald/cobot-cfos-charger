@@ -5,7 +5,7 @@ import { COBOT_NAVIGATION_ITEMS, COBOT_OAUTH_USER_SCOPES } from '@/constants';
 import { COBOT_CLIENT_ID } from '@/env';
 import { sealOauthState } from '@/seals';
 import type { ValueOrError } from '@/types/util';
-import { CobotSpaceId, CobotSpaceSubdomain, CobotUserId } from '@/types/zod';
+import { CobotSpaceId, CobotSpaceSubdomain, CobotUserId } from '@/types/zod/cobotApi';
 import { getBaseUrl } from '@/util';
 
 const VerifiableQueryParameters = z.object({

@@ -4,8 +4,9 @@ import type { CreateNextContextOptions } from '@trpc/server/adapters/next';
 import { getUserDetails } from '@/api/cobot';
 import { USER_DETAILS_CACHE_TTL_MS } from '@/constants';
 import { unsealIframeToken } from '@/seals';
-import { spaceAccessTokenStore } from '@/storage';
-import type { CobotApiResponseGetUserDetails, CobotSpaceAccessToken } from '@/types/zod';
+import { spaceSettingsStore } from '@/storage';
+import type { CobotApiResponseGetUserDetails } from '@/types/zod/cobotApi';
+import type { CobotSpaceSettings } from '@/types/zod/other';
 
 const authorizationHeaderPrefix = 'bearer ';
 
@@ -13,8 +14,8 @@ export type TrpcContext = {
     spaceId: string;
     spaceSubdomain: string;
     cobotUserId: string;
-    cobotAccessToken: string;
-    cobotSpaceAccessToken: CobotSpaceAccessToken['accessToken'];
+    cobotUserAccessToken: string;
+    cobotSpaceSettings: CobotSpaceSettings;
     userDetails: CobotApiResponseGetUserDetails;
     spaceMembershipId: string | null;
     isAdmin: boolean;
@@ -42,17 +43,21 @@ export const createContext = async (opts: CreateNextContextOptions): Promise<Trp
         });
     }
 
-    const { spaceId, spaceSubdomain, cobotUserId, cobotAccessToken } = iframeTokenUnsealResult.value;
+    const { spaceId, spaceSubdomain, cobotUserId, cobotUserAccessToken } = iframeTokenUnsealResult.value;
 
-    const cobotSpaceAccessToken = await spaceAccessTokenStore.get({ spaceId });
-    if (!cobotSpaceAccessToken.ok || !cobotSpaceAccessToken.value) {
+    const cobotSpaceSettings = await spaceSettingsStore.get({ spaceId });
+    if (!cobotSpaceSettings.ok || !cobotSpaceSettings.value) {
         throw new TRPCError({
             code: 'UNAUTHORIZED',
             message: 'Missing space access token',
         });
     }
 
+    // This is a balancing act between security and performance. This does constitute a security check and caching it
+    // means the user could theoretically be using their credentials past when they were kicked from the space.
+    // But I think 60s is a good balance here.
     let userDetailsResult = null;
+    // See if we have the user details in the cache
     if (userDetailsCache.has(cobotUserId)) {
         const [expirationTime, userDetails] = userDetailsCache.get(cobotUserId)!;
         if (Date.now() < expirationTime) {
@@ -63,7 +68,7 @@ export const createContext = async (opts: CreateNextContextOptions): Promise<Trp
     }
 
     if (userDetailsResult === null) {
-        const userDetails = await getUserDetails(cobotAccessToken);
+        const userDetails = await getUserDetails(cobotUserAccessToken);
         if (!userDetails.ok) {
             throw new TRPCError({
                 code: 'UNAUTHORIZED',
@@ -86,8 +91,8 @@ export const createContext = async (opts: CreateNextContextOptions): Promise<Trp
         spaceId,
         spaceSubdomain,
         cobotUserId,
-        cobotAccessToken,
-        cobotSpaceAccessToken: cobotSpaceAccessToken.value.accessToken,
+        cobotUserAccessToken,
+        cobotSpaceSettings: cobotSpaceSettings.value,
         userDetails: userDetailsResult,
         spaceMembershipId,
         isAdmin,

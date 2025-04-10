@@ -10,7 +10,7 @@ Register an OAuth application under https://dev.cobot.me/oauth2_clients (You nee
 
 * **Name**: Anything you like such as "Electric Car Charging"
 * **Name within a space**: Anything you like such as "Electric Car Charging"
-* **Scopes** (These might change): navigation read_accounting_codes read_user write_charges read_memberships write_activities read_bookings write_bookings
+* **Scopes**: As they might change, please check out `src/constants.ts`. The scopes should be space-separated.
 * **Main Application URL**: `APP_BASE_URL`
 * **Redirect URI**: `APP_BASE_URL/api/oauth/callback`
 
@@ -75,17 +75,18 @@ Afterwards, the user is returned to `src/pages/api/oauth/callback`, where we dec
 
 Since Cobot does not provide a way of authenticating our iframes to our backend and since storing data in a cookie does not work very well with third party iframes these days, when visiting an iframe, the app will initiate an OAuth consent flow inside the iframe for this user to get a user-scoped access token for the user accessing the iframe. The callback will encrypt / wrap (using iron) the access token and send it in the query sting to the browser after the OAuth flow. That way, our frontend then has a way of identifying itself to our backend and our backend has a stateless way of acquiring the access token for the user.
 
-For communication between our backend and our frontend we use TRPC (API endpoint in `src/pages/api/[trpc]/trpc.ts` with the router located at `src/trpc-server`). TRPC provides typechecking and immediate and proper typing of the endpoints (note that we still use TRPC v10 here), as well as the capability to use chainable middlewares for authentication. We already read the token content into the TRPC context, but there is no authorization yet.
+For communication between our backend and our frontend we use TRPC (API endpoint in `src/pages/api/[trpc]/trpc.ts` with the router located at `src/trpc-server`). TRPC provides typechecking and immediate and proper typing of the endpoints (note that we still use TRPC v10 here), as well as the capability to use chainable middlewares for authentication.
+
+## Caveats
+
+* When you change scopes, you'll have to reinstall the app in your Cobot space so that the app gets a new access token with the new scopes. 
 
 # Next steps
 
 Right now the app only consists of an admin iframe that shows pretty much the raw values we get from the wallbox and allows us to start and stop charging. The next steps are to implement the following features:
 
-* Make this a bit prettier to have an admin UI that can be used by the Coworking space staff 
-  * Allow starting a charging session for a user
-  * Allow starting a charging session wihtout a user (for immediate charging at the counter)
-  * Show a history of charging sessions
 * Make a user-facing iframe that allows users to start and stop charging sessions with charges going to their Cobot account
+* Make sure it is production-ready
 
 Achieving these goals likely necessitates steps like these:
 
@@ -93,16 +94,13 @@ Achieving these goals likely necessitates steps like these:
   * if stopping the charging session works properly (as this was not tested while we had hardware access)
   * what the evseWallboxState and chargingEnabled values are and how they play together. Adjust Code in ChargerCard and chargingSessionService accordingly.
 * Implement charging session history
-  * Do this in a database or somehow store the data inside Cobot (this would be preferable, but I am not sure it is possible, maybe with https://dev.cobot.me/api-docs/activities ? These need to be human-readable though)
-    * If data is not stored inside Cobot, consider switching to a proper database. 
-    * I would prefer not having a database since if this is rolled out on a Raspberry Pi for example, wear on the MicroSD card is a concern.
-  * Allow starting and stopping charging sessions (user optional for admins)
+  * Do this with the Cobot Bookings API. The idea is to add the chargers as bookable resources in Cobot and then use the Bookings API to create bookings for the charging sessions. This way, we can keep track of the charging sessions and their costs.
   * Keep track of current charging sessions
   * Consider how to know when the charging session ends when it is not stopped via our API (regular polling?)
-* Implement billing
-  * Use the https://dev.cobot.me/api-docs/one-time-charges#create-charge API to create charges once the charging session is finished
-  * We will need to have the accounting code for this charge put into the app somehow
-  * Consider making the accounting code configurable by admins
+* Implement regularly scheduled job to check if a charger is still connected
+* Polish
+  * Error handling
+  * All the TODOs in the code
 
 # Further reading
 

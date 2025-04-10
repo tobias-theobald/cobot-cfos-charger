@@ -1,7 +1,8 @@
-import { getMemberships } from '@/trpc-server/cobot';
+import { getMemberships, getResources } from '@/trpc-server/cobot';
+import { getCobotSpaceSettings, setCobotSpaceSettings } from '@/trpc-server/settings';
 
 import { router } from './base';
-import { getWallboxStatus, startCharging, stopCharging } from './wallbox';
+import { getWallboxStatus, startCharging, stopCharging } from './charging';
 
 export const appRouter = router({
     getWallboxStatus,
@@ -9,6 +10,10 @@ export const appRouter = router({
     stopCharging,
 
     getMemberships,
+    getResources,
+
+    getCobotSpaceSettings,
+    setCobotSpaceSettings,
 });
 
 // Export type router type signature,

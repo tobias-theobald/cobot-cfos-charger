@@ -1,17 +1,21 @@
 import { COBOT_CLIENT_ID, COBOT_CLIENT_SECRET } from '@/env';
 import {
     type CobotApiRequestPostActivityBody,
+    type CobotApiRequestPostBookingBody,
     type CobotApiRequestPostNavigationLinkBody,
-    CobotApiResponseGetActivities,
+    type CobotApiRequestPutBookingBody,
     CobotApiResponseGetActivity,
+    CobotApiResponseGetBooking,
+    CobotApiResponseGetBookings,
     CobotApiResponseGetMemberships,
     CobotApiResponseGetNavigationLinks,
+    CobotApiResponseGetResources,
     CobotApiResponseGetSpaceDetails,
     CobotApiResponseGetUserDetails,
     CobotApiResponsePostNavigationLink,
     CobotApiResponsePostOauthAccessToken,
     CobotApiResponsePostOauthSpaceAccessToken,
-} from '@/types/zod';
+} from '@/types/zod/cobotApi';
 
 import { fetchWithTypeCheckedJsonResponse } from './base';
 
@@ -143,44 +147,6 @@ export const listMembershipsWithIdNameEmail = async (
     });
 };
 
-// https://dev.cobot.me/api-docs/activities#list-activities
-export const getActivities = async (
-    accessToken: string,
-    spaceSubdomain: string,
-    params: {
-        from: string;
-        to: string;
-        types?: string[];
-        source_ids?: string[];
-        last?: number;
-    },
-) => {
-    console.log('Fetching activities');
-
-    const searchParams = new URLSearchParams();
-    searchParams.set('from', params.from);
-    searchParams.set('to', params.to);
-
-    if (params.types && params.types.length > 0) {
-        searchParams.set('types', params.types.join(','));
-    }
-
-    if (params.source_ids && params.source_ids.length > 0) {
-        searchParams.set('source_ids', params.source_ids.join(','));
-    }
-
-    if (params.last) {
-        searchParams.set('last', params.last.toString());
-    }
-
-    return fetchWithTypeCheckedJsonResponse({
-        url: `https://${encodeURIComponent(spaceSubdomain)}.cobot.me/api/activities?${searchParams}`,
-        method: 'get',
-        accessToken,
-        expectedType: CobotApiResponseGetActivities,
-    });
-};
-
 // https://dev.cobot.me/api-docs/activities#create-activity
 export const createActivity = async (
     accessToken: string,
@@ -195,5 +161,82 @@ export const createActivity = async (
         body: activityData,
         accessToken,
         expectedType: CobotApiResponseGetActivity,
+    });
+};
+
+// https://dev.cobot.me/api-docs/resources#list-resources
+export const listResources = async (accessToken: string, spaceSubdomain: string, resourceIds?: string[]) => {
+    console.log('Listing resources', resourceIds);
+
+    const searchParams = new URLSearchParams();
+    if (resourceIds && resourceIds.length > 0) {
+        searchParams.set('ids', resourceIds.join(','));
+    }
+
+    const queryString = searchParams.toString() ? `?${searchParams.toString()}` : '';
+
+    return fetchWithTypeCheckedJsonResponse({
+        url: `https://${encodeURIComponent(spaceSubdomain)}.cobot.me/api/resources${queryString}`,
+        method: 'get',
+        accessToken,
+        expectedType: CobotApiResponseGetResources,
+    });
+};
+
+// https://dev.cobot.me/api-docs/bookings#list-bookings
+export const listBookingsForResourceAndTimeframe = async (
+    accessToken: string,
+    spaceSubdomain: string,
+    resourceId: string,
+    from: string,
+    to: string,
+) => {
+    console.log('Listing bookings from', from, 'to', to);
+
+    const searchParams = new URLSearchParams({
+        from,
+        to,
+    });
+
+    return fetchWithTypeCheckedJsonResponse({
+        url: `https://${encodeURIComponent(spaceSubdomain)}.cobot.me/api/resources/${encodeURIComponent(resourceId)}/bookings?${searchParams.toString()}`,
+        method: 'get',
+        accessToken,
+        expectedType: CobotApiResponseGetBookings,
+    });
+};
+
+// https://dev.cobot.me/api-docs/bookings#create-booking
+export const createBooking = async (
+    accessToken: string,
+    spaceSubdomain: string,
+    resourceId: string,
+    bookingData: CobotApiRequestPostBookingBody,
+) => {
+    console.log('Creating booking for resource', resourceId);
+    return fetchWithTypeCheckedJsonResponse({
+        url: `https://${encodeURIComponent(spaceSubdomain)}.cobot.me/api/resources/${resourceId}/bookings`,
+        method: 'post',
+        body: bookingData,
+        accessToken,
+        expectedType: CobotApiResponseGetBooking,
+    });
+};
+
+// https://dev.cobot.me/api-docs/bookings#update-booking
+export const updateBooking = async (
+    accessToken: string,
+    spaceSubdomain: string,
+    bookingId: string,
+    bookingData: CobotApiRequestPutBookingBody,
+) => {
+    console.log('Updating booking', bookingId);
+
+    return fetchWithTypeCheckedJsonResponse({
+        url: `https://${encodeURIComponent(spaceSubdomain)}.cobot.me/api/bookings/${bookingId}`,
+        method: 'put',
+        body: bookingData,
+        accessToken,
+        expectedType: CobotApiResponseGetBooking,
     });
 };

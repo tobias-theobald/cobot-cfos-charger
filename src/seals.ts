@@ -4,7 +4,7 @@ import type { ZodType } from 'zod';
 
 import { IRON_PASSWORD } from './env';
 import type { ValueOrError } from './types/util';
-import { IframeToken, OauthState } from './types/zod';
+import { IframeToken, OauthState } from './types/zod/other';
 import { logErrorAndReturnCleanMessage } from './util';
 
 const optionsOauthState = { ...defaults, ttl: 15 * 60 * 1000 }; // 15 min

@@ -1,4 +1,4 @@
-import { FileSystemStorageFormat } from '@/types/zod';
+import { FileSystemStorageFormat } from '@/types/zod/other';
 
 import { KeyValueStorageBase } from './KeyValueStorageBase';
 

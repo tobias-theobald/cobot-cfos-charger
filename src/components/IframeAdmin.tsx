@@ -3,7 +3,9 @@ import { Box, Button, Grid } from '@mui/material';
 import { useCallback, useState } from 'react';
 
 import ChargerCard from '@/components/ChargerCard';
+import SettingsDialog from '@/components/SettingsDialog';
 import { trpc } from '@/trpc-client';
+import type { CobotSpaceSettingsForUi } from '@/types/zod/other';
 
 export default function IframeAdmin() {
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -19,6 +21,24 @@ export default function IframeAdmin() {
         refetchInterval: false,
         refetchOnMount: false,
     });
+    const wallboxStateLoading =
+        getWallboxStatusQuery.isLoading || startChargingMutation.isLoading || stopChargingMutation.isLoading;
+
+    const getCobotSpaceSettingsQuery = trpc.getCobotSpaceSettings.useQuery();
+    const setCobotSpaceSettingsMutation = trpc.setCobotSpaceSettings.useMutation({
+        onSettled: () => {
+            getCobotSpaceSettingsQuery.refetch().catch(() => {
+                // nop, handle error in the query
+            });
+        },
+    });
+
+    const handleSaveSettings = useCallback(
+        (settings: CobotSpaceSettingsForUi) => {
+            setCobotSpaceSettingsMutation.mutate(settings);
+        },
+        [setCobotSpaceSettingsMutation],
+    );
 
     const handleStartCharging = useCallback(
         (chargerId: string, membershipId: string) => {
@@ -43,7 +63,7 @@ export default function IframeAdmin() {
                     </Button>
                 </Box>
 
-                {getWallboxStatusQuery.data && getMembershipsQuery.data ? (
+                {getWallboxStatusQuery.data && getMembershipsQuery.data && getCobotSpaceSettingsQuery.data ? (
                     <Grid container spacing={3}>
                         {getWallboxStatusQuery.data.map((charger) => (
                             <Grid size={{ xs: 12, md: 6, lg: 4 }} key={charger.id}>
@@ -52,44 +72,31 @@ export default function IframeAdmin() {
                                     memberships={getMembershipsQuery.data}
                                     onStartCharging={handleStartCharging}
                                     onStopCharging={handleStopCharging}
+                                    loading={wallboxStateLoading}
+                                    otherError={
+                                        !getCobotSpaceSettingsQuery.data.resourceMapping[charger.id]
+                                            ? 'No resource defined, please check settings'
+                                            : undefined
+                                    }
                                 />
                             </Grid>
                         ))}
                     </Grid>
                 ) : (
+                    // TODO do a loading spinner
                     <>Loading...</>
                 )}
             </Box>
 
-            {/*TODO: Add settings modal*/}
-            {/*<SettingsDialog*/}
-            {/*    open={settingsOpen}*/}
-            {/*    onClose={() => setSettingsOpen(false)}*/}
-            {/*    settings={settings}*/}
-            {/*    accountingCodes={mockAccountingCodes}*/}
-            {/*    onSaveSettings={handleSaveSettings}*/}
-            {/*/>*/}
-
-            {/*<main>*/}
-            {/*    <pre>{JSON.stringify(getWallboxStatusQuery.data ?? getWallboxStatusQuery.error, null, 2)}</pre>*/}
-            {/*    <div>Set Charging State Mutation: {startChargingMutation.status}</div>*/}
-            {/*    {getWallboxStatusQuery.data?.map((device) => (*/}
-            {/*        <div key={device.id}>*/}
-            {/*            <button*/}
-            {/*                type="button"*/}
-            {/*                disabled={!device.chargingEnabled && device.evseWallboxState !== 'vehiclePresent'}*/}
-            {/*                onClick={() => {*/}
-            {/*                    startChargingMutation.mutate({*/}
-            {/*                        chargerId: device.id,*/}
-            {/*                        membershipId: MEMBERSHIP_ID_NOBODY,*/}
-            {/*                    });*/}
-            {/*                }}*/}
-            {/*            >*/}
-            {/*                Authorize {device.friendlyName} ({device.id})*/}
-            {/*            </button>*/}
-            {/*        </div>*/}
-            {/*    ))}*/}
-            {/*</main>*/}
+            {getCobotSpaceSettingsQuery.data && getWallboxStatusQuery.data && (
+                <SettingsDialog
+                    open={settingsOpen}
+                    onClose={() => setSettingsOpen(false)}
+                    chargers={getWallboxStatusQuery.data}
+                    settings={getCobotSpaceSettingsQuery.data}
+                    onSaveSettings={handleSaveSettings}
+                />
+            )}
         </>
     );
 }

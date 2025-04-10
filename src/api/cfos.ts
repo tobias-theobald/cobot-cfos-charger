@@ -1,7 +1,12 @@
-import { z } from 'zod';
+import { CFOS_BASE_URL, CFOS_RFID_ID } from '@/env';
+import type { ValueOrError } from '@/types/util';
+import {
+    type EvsePowerbrainDevice,
+    evseWallboxStateMap,
+    GetWallboxesApiResponse,
+    type GetWallboxesResponse,
+} from '@/types/zod/cfos';
 
-import { CFOS_BASE_URL, CFOS_RFID_ID } from '../env';
-import type { ValueOrError } from '../types/util';
 import { fetchWithTypeCheckedJsonResponse } from './base';
 
 const mainBaseUrl = new URL(CFOS_BASE_URL);
@@ -11,27 +16,6 @@ mainBaseUrl.password = '';
 mainBaseUrl.username = '';
 mainBaseUrl.pathname = mainBaseUrl.pathname + '/cnf';
 
-export type GetWallboxesResponse = {
-    id: string;
-    totalEnergyWattHours: number;
-    friendlyName: string;
-    address: string;
-    evseWallboxState: EvseWallboxState;
-    chargingEnabled: boolean;
-}[];
-const EvsePowerbrainDevice = z.object({
-    dev_type: z.literal('evse_powerbrain'), // filter out evse_powerbrain
-    address: z.literal('evse:').or(z.string()),
-    desc: z.string(),
-    state: z.number().int().min(0).max(5),
-    dev_id: z.string(),
-    total_energy: z.number(),
-    charging_enabled: z.boolean(),
-});
-type EvsePowerbrainDevice = z.infer<typeof EvsePowerbrainDevice>;
-const GetWallboxesApiResponse = z.object({
-    devices: z.array(EvsePowerbrainDevice.or(z.object({ dev_type: z.string() }))),
-});
 export const getWallboxes = async (): Promise<ValueOrError<GetWallboxesResponse>> => {
     console.log('fetching all wallboxes');
     const url = new URL(mainBaseUrl);
@@ -70,16 +54,6 @@ export const getWallboxes = async (): Promise<ValueOrError<GetWallboxesResponse>
         value: filteredDevices,
     };
 };
-
-export type EvseWallboxState = 'free' | 'vehiclePresent' | 'charging' | 'offline' | 'error';
-const evseWallboxStateMap: Record<number, EvseWallboxState> = {
-    1: 'free',
-    2: 'vehiclePresent',
-    3: 'charging',
-    4: 'charging',
-    5: 'error',
-    6: 'offline',
-} as const;
 
 export const cfosAuthorizeWallbox = async (id: string): Promise<ValueOrError<void>> => {
     console.log('authorizing wallbox', id);
