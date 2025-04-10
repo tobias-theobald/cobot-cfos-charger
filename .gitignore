@@ -4,7 +4,7 @@
 /node_modules
 /.pnp
 .pnp.js
-.yarn/install-state.gz
+.yarn
 
 # testing
 /coverage
@@ -19,6 +19,8 @@
 # misc
 .DS_Store
 *.pem
+*.iml
+.idea
 
 # debug
 npm-debug.log*
@@ -37,3 +39,4 @@ next-env.d.ts
 
 .env
 database.json
+database.sqlite
