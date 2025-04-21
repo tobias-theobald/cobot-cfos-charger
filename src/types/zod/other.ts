@@ -24,20 +24,21 @@ export const CobotSpaceSettingsForUi = CobotSpaceSettings.omit({
 });
 export type CobotSpaceSettingsForUi = z.infer<typeof CobotSpaceSettingsForUi>;
 
-export const BookingStartComment = z.object({
+export const ChargingSessionBookingStartComment = z.object({
     cobotUserIdStarted: CobotUserId,
     cobotMembershipId: z.string().nullable(),
+    chargerId: z.string(),
     totalEnergyWattHoursStart: z.number(),
 });
-export type BookingStartComment = z.infer<typeof BookingStartComment>;
+export type ChargingSessionBookingStartComment = z.infer<typeof ChargingSessionBookingStartComment>;
 
-export const BookingEndComment = BookingStartComment.extend({
+export const ChargingSessionBookingEndComment = ChargingSessionBookingStartComment.extend({
     cobotUserIdEnded: CobotUserId.nullable(),
     totalEnergyWattHoursEnd: z.number(),
     energyWattHoursUsed: z.number(),
     price: z.string(),
 });
-export type BookingEndComment = z.infer<typeof BookingEndComment>;
+export type ChargingSessionBookingEndComment = z.infer<typeof ChargingSessionBookingEndComment>;
 
 // Sealed
 
