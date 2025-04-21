@@ -1,5 +1,6 @@
 import { Settings as SettingsIcon } from '@mui/icons-material';
 import { Box, Button, Grid } from '@mui/material';
+import { useSnackbar } from 'notistack';
 import { useCallback, useState } from 'react';
 
 import ChargerCard from '@/components/ChargerCard';
@@ -9,12 +10,44 @@ import type { CobotSpaceSettingsForUi } from '@/types/zod/other';
 
 export default function IframeAdmin() {
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const { enqueueSnackbar } = useSnackbar();
 
     const getWallboxStatusQuery = trpc.getWallboxStatus.useQuery(undefined, {
         refetchInterval: 3000,
     });
-    const startChargingMutation = trpc.startCharging.useMutation();
-    const stopChargingMutation = trpc.stopCharging.useMutation();
+
+    // Create a mapping of charger IDs to friendly names
+    const chargerNameById = Object.fromEntries(
+        getWallboxStatusQuery.data?.map((charger) => [charger.id, charger.friendlyName || charger.id]) || [],
+    );
+
+    // Helper to get charger name
+    const getChargerName = (chargerId: string) => chargerNameById[chargerId] || chargerId;
+
+    const startChargingMutation = trpc.startCharging.useMutation({
+        onSuccess: (_, variables) => {
+            enqueueSnackbar(`Charging started successfully on ${getChargerName(variables.chargerId)}`, {
+                variant: 'success',
+            });
+        },
+        onError: (error, variables) => {
+            enqueueSnackbar(`Error starting charging on ${getChargerName(variables.chargerId)}: ${error.message}`, {
+                variant: 'error',
+            });
+        },
+    });
+    const stopChargingMutation = trpc.stopCharging.useMutation({
+        onSuccess: (_, variables) => {
+            enqueueSnackbar(`Charging stopped successfully on ${getChargerName(variables.chargerId)}`, {
+                variant: 'success',
+            });
+        },
+        onError: (error, variables) => {
+            enqueueSnackbar(`Error stopping charging on ${getChargerName(variables.chargerId)}: ${error.message}`, {
+                variant: 'error',
+            });
+        },
+    });
     const getMembershipsQuery = trpc.getMemberships.useQuery(undefined, {
         // This API is heavily rate-limited and unlikely to change much, so we can cache it until the user reloads, probably
         refetchOnReconnect: false,
@@ -26,10 +59,14 @@ export default function IframeAdmin() {
 
     const getCobotSpaceSettingsQuery = trpc.getCobotSpaceSettings.useQuery();
     const setCobotSpaceSettingsMutation = trpc.setCobotSpaceSettings.useMutation({
-        onSettled: () => {
+        onSuccess: () => {
+            enqueueSnackbar('Settings saved successfully', { variant: 'success' });
             getCobotSpaceSettingsQuery.refetch().catch(() => {
                 // nop, handle error in the query
             });
+        },
+        onError: (error) => {
+            enqueueSnackbar(`Error saving settings: ${error.message}`, { variant: 'error' });
         },
     });
 

@@ -55,6 +55,19 @@ export const getWallboxes = async (): Promise<ValueOrError<GetWallboxesResponse>
     };
 };
 
+export const getWallboxById = async (chargerId: string): Promise<ValueOrError<GetWallboxesResponse[number]>> => {
+    const wallboxState = await getWallboxes();
+    if (!wallboxState.ok) {
+        return wallboxState;
+    }
+    const wallbox = wallboxState.value.find((w) => w.id === chargerId);
+    if (!wallbox) {
+        return { ok: false, error: `Wallbox with id ${chargerId} not found` };
+    }
+
+    return { ok: true, value: wallbox };
+};
+
 export const cfosAuthorizeWallbox = async (id: string): Promise<ValueOrError<void>> => {
     console.log('authorizing wallbox', id);
     const url = new URL(mainBaseUrl);

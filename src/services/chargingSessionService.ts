@@ -1,4 +1,4 @@
-import { cfosAuthorizeWallbox, cfosDeauthorizeWallbox, getWallboxes } from '@/api/cfos';
+import { cfosAuthorizeWallbox, cfosDeauthorizeWallbox, getWallboxById } from '@/api/cfos';
 import {
     createActivity,
     createBooking,
@@ -6,10 +6,10 @@ import {
     listMembershipsWithIdNameEmail,
     updateBooking,
 } from '@/api/cobot';
-import { BOOKING_DURATION_AT_START, MEMBERSHIP_ID_NOBODY } from '@/constants';
+import { BOOKING_DURATION_AT_START } from '@/constants';
 import type { ValueOrError } from '@/types/util';
 import type { CobotApiRequestPostActivityBody, CobotApiResponseGetUserDetails } from '@/types/zod/cobotApi';
-import type { CobotSpaceSettings } from '@/types/zod/other';
+import type { BookingEndComment, CobotSpaceSettings } from '@/types/zod/other';
 import { BookingStartComment } from '@/types/zod/other';
 
 /**
@@ -17,13 +17,13 @@ import { BookingStartComment } from '@/types/zod/other';
  * @param userDetails
  * @param cobotSpaceSettings
  * @param chargerId
- * @param cobotMembershipId
+ * @param cobotMembershipId this should not be the nobody membership ID constant
  */
 export const startChargingSession = async (
     userDetails: CobotApiResponseGetUserDetails,
     cobotSpaceSettings: CobotSpaceSettings,
     chargerId: string,
-    cobotMembershipId: string,
+    cobotMembershipId: string | null,
 ): Promise<ValueOrError<void>> => {
     const {
         accessToken: cobotSpaceAccessToken,
@@ -36,28 +36,25 @@ export const startChargingSession = async (
         return { ok: false, error: `Wallbox with id ${chargerId} not mapped to a resource` };
     }
 
-    const wallboxState = await getWallboxes();
-    if (!wallboxState.ok) {
-        return wallboxState;
-    }
-    const wallbox = wallboxState.value.find((w) => w.id === chargerId);
-    if (!wallbox) {
-        return { ok: false, error: `Wallbox with id ${chargerId} not found` };
+    const wallbox = await getWallboxById(chargerId);
+    if (!wallbox.ok) {
+        return wallbox;
     }
 
     // TODO check with real hardware if these validations make sense
-    const { evseWallboxState, friendlyName, totalEnergyWattHours, chargingEnabled } = wallbox;
+    const { evseWallboxState, friendlyName, totalEnergyWattHours, chargingEnabled } = wallbox.value;
     if (evseWallboxState !== 'free' && evseWallboxState !== 'vehiclePresent') {
         return { ok: false, error: `Wallbox with id ${chargerId} is not available` };
     }
 
     // TODO check for open sessions
 
-    const membership_id = cobotMembershipId === MEMBERSHIP_ID_NOBODY ? undefined : cobotMembershipId;
+    const membership_id = cobotMembershipId === null ? undefined : cobotMembershipId;
 
     // Create booking for the charger's resource with some metadata in the description
     const bookingStartComment: BookingStartComment = {
         totalEnergyWattHoursStart: totalEnergyWattHours,
+        cobotUserIdStarted: userDetails.id,
         cobotMembershipId,
     };
     const createBookingResult = await createBooking(cobotSpaceAccessToken, cobotSpaceSubdomain, resourceId, {
@@ -82,7 +79,7 @@ export const startChargingSession = async (
     const channels: CobotApiRequestPostActivityBody['channels'] = ['admin'];
     let source_ids: string[] | undefined = undefined;
     let onBehalfOf: string = '(no membership) ';
-    if (cobotMembershipId !== MEMBERSHIP_ID_NOBODY) {
+    if (cobotMembershipId !== null) {
         channels.push('membership');
         source_ids = [cobotMembershipId];
 
@@ -108,43 +105,20 @@ export const startChargingSession = async (
     return { ok: true, value: undefined };
 };
 
-export type StopChargingSessionResult = {
-    wattHoursUsed: number;
-    duration: number;
-    price: number;
-};
-export const stopChargingSession = async (
-    userDetails: CobotApiResponseGetUserDetails,
+export type RunningChargingSessionInBooking = BookingStartComment & { bookingId: string; from: Date; to: Date };
+export const getCurrentChargingSession = async (
     cobotSpaceSettings: CobotSpaceSettings,
     chargerId: string,
-): Promise<ValueOrError<StopChargingSessionResult>> => {
+): Promise<ValueOrError<RunningChargingSessionInBooking | null>> => {
     const {
         accessToken: cobotSpaceAccessToken,
         spaceSubdomain: cobotSpaceSubdomain,
         resourceMapping,
-        pricePerKWh,
     } = cobotSpaceSettings;
 
     const resourceId = resourceMapping[chargerId];
     if (!resourceId) {
         return { ok: false, error: `Wallbox with id ${chargerId} not mapped to a resource` };
-    }
-
-    const wallboxState = await getWallboxes();
-    if (!wallboxState.ok) {
-        return wallboxState;
-    }
-
-    const wallbox = wallboxState.value.find((w) => w.id === chargerId);
-    if (!wallbox) {
-        return { ok: false, error: `Wallbox with id ${chargerId} not found` };
-    }
-    const { evseWallboxState, friendlyName, totalEnergyWattHours } = wallbox;
-
-    // Actually disable charger
-    const cfosResult = await cfosDeauthorizeWallbox(chargerId);
-    if (!cfosResult.ok) {
-        return cfosResult;
     }
 
     const listBookingResult = await listBookingsForResourceAndTimeframe(
@@ -165,22 +139,9 @@ export const stopChargingSession = async (
         return new Date(from) <= now && now <= new Date(to);
     });
     if (!currentBooking) {
-        createActivity(cobotSpaceAccessToken, cobotSpaceSubdomain, {
-            text: `EV charging session ended by user ${userDetails.email} on charger ${friendlyName} at ${(totalEnergyWattHours / 1000).toFixed(3)}kWh but no booking found! Please update the booking manually and create a charge.`,
-            channels: ['admin'],
-        }).catch((err) => {
-            console.error('Failed to create activity at booking error', err, {
-                userDetails,
-                chargerId,
-                wallbox,
-                totalEnergyWattHours,
-                now: now.toISOString(),
-            });
-        });
-        return { ok: false, error: `Charger stopped but no booking found` };
+        return { ok: true, value: null };
     }
-
-    const { id: bookingId, comments, title } = currentBooking;
+    const { id: bookingId, comments, title, from, to } = currentBooking;
     if (!comments) {
         return { ok: false, error: `Charger stopped but booking ${title} is invalid (no comment)` };
     }
@@ -197,26 +158,104 @@ export const stopChargingSession = async (
             error: `Charger stopped but booking ${title} is invalid (comment not BookingStartComment)`,
         };
     }
-    const { totalEnergyWattHoursStart, cobotMembershipId } = bookingComment.data;
+    return {
+        ok: true,
+        value: { ...bookingComment.data, bookingId, from: new Date(from), to: new Date(to) },
+    };
+};
 
-    const wattHoursUsed = totalEnergyWattHours - totalEnergyWattHoursStart;
-    const kilowattHoursUsed = wattHoursUsed / 1000;
-    let price = cobotMembershipId === MEMBERSHIP_ID_NOBODY ? 0 : kilowattHoursUsed * pricePerKWh;
+/**
+ * Returns the current charging sessions for all wallboxes in the given Cobot space by charger ID.
+ * @param cobotSpaceSettings
+ */
+export const getCurrentChargingSessions = async (
+    cobotSpaceSettings: CobotSpaceSettings,
+): Promise<Record<string, ValueOrError<RunningChargingSessionInBooking | null>>> => {
+    const { resourceMapping } = cobotSpaceSettings;
+
+    const bookingPromises = Object.keys(resourceMapping).map(async (chargerId) => {
+        const currentChargingSession = await getCurrentChargingSession(cobotSpaceSettings, chargerId);
+        return [chargerId, currentChargingSession];
+    });
+
+    const bookingReturns = await Promise.all(bookingPromises);
+    return Object.fromEntries(bookingReturns);
+};
+
+export type StopChargingSessionResult = {
+    wattHoursUsed: number;
+    duration: number;
+    price: number;
+};
+export const stopChargingSession = async (
+    userDetails: CobotApiResponseGetUserDetails | null,
+    cobotSpaceSettings: CobotSpaceSettings,
+    chargerId: string,
+): Promise<ValueOrError<StopChargingSessionResult>> => {
+    const {
+        accessToken: cobotSpaceAccessToken,
+        spaceSubdomain: cobotSpaceSubdomain,
+        resourceMapping,
+        pricePerKWh,
+    } = cobotSpaceSettings;
+
+    const resourceId = resourceMapping[chargerId];
+    if (!resourceId) {
+        return { ok: false, error: `Wallbox with id ${chargerId} not mapped to a resource` };
+    }
+
+    const wallbox = await getWallboxById(chargerId);
+    if (!wallbox.ok) {
+        return wallbox;
+    }
+
+    const { friendlyName, totalEnergyWattHours: totalEnergyWattHoursEnd } = wallbox.value;
+
+    // Actually disable charger
+    const cfosResult = await cfosDeauthorizeWallbox(chargerId);
+    if (!cfosResult.ok) {
+        return cfosResult;
+    }
+
+    // Find the current booking
+    const now = new Date();
+    const getCurrentBookingResult = await getCurrentChargingSession(cobotSpaceSettings, chargerId);
+    if (!getCurrentBookingResult.ok) {
+        return { ok: false, error: `Charger stopped but error fetching bookings` };
+    }
+
+    const currentBooking = getCurrentBookingResult.value;
+    if (!currentBooking) {
+        return { ok: false, error: `Charger stopped but no active booking found` };
+    }
+
+    const { totalEnergyWattHoursStart, cobotMembershipId, cobotUserIdStarted, bookingId } = currentBooking;
+
+    const energyWattHoursUsed = totalEnergyWattHoursEnd - totalEnergyWattHoursStart;
+    const energyKilowattHoursUsed = energyWattHoursUsed / 1000;
+    let price = cobotMembershipId === null ? 0 : energyKilowattHoursUsed * pricePerKWh;
     const duration = (now.getTime() - new Date(currentBooking.from).getTime()) / 1000; // seconds
+    const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
 
     if (price < 0) {
         console.warn('Price is negative, setting to 0');
         price = 0;
     }
 
+    const bookingEndComment: BookingEndComment = {
+        totalEnergyWattHoursStart,
+        totalEnergyWattHoursEnd,
+        energyWattHoursUsed,
+        cobotMembershipId,
+        cobotUserIdStarted,
+        cobotUserIdEnded: userDetails?.id ?? null,
+        price: price.toFixed(2),
+    };
+
     const updateBookingResult = await updateBooking(cobotSpaceAccessToken, cobotSpaceSubdomain, bookingId, {
-        to: now.toISOString(),
-        title: `EV charging session (${kilowattHoursUsed.toFixed(3)} kWh)`,
-        comments: JSON.stringify({
-            totalEnergyWattHoursStart,
-            totalEnergyWattHoursEnd: totalEnergyWattHours,
-            cobotMembershipId,
-        }),
+        to: oneMinuteAgo.toISOString(), // This will allow a new charging session to be started immediately
+        title: `EV charging session (${energyKilowattHoursUsed.toFixed(3)} kWh)`,
+        comments: JSON.stringify(bookingEndComment),
         has_custom_price: true,
         price,
     });
@@ -227,7 +266,8 @@ export const stopChargingSession = async (
     const channels: CobotApiRequestPostActivityBody['channels'] = ['admin'];
     let source_ids: string[] | undefined = undefined;
     let onBehalfOf: string = '(no membership) ';
-    if (cobotMembershipId !== MEMBERSHIP_ID_NOBODY) {
+    let byline: string;
+    if (cobotMembershipId !== null) {
         channels.push('membership');
         source_ids = [cobotMembershipId];
 
@@ -240,9 +280,14 @@ export const stopChargingSession = async (
 
         onBehalfOf = `on behalf of ${membershipDetails.value[0].name} `;
     }
+    if (userDetails) {
+        byline = `by user ${userDetails.email}`;
+    } else {
+        byline = `by system`;
+    }
 
     const createActivityResult = await createActivity(cobotSpaceAccessToken, cobotSpaceSubdomain, {
-        text: `EV charging session ended by user ${userDetails.email} ${onBehalfOf}on charger ${friendlyName}`,
+        text: `EV charging session ended ${byline} ${onBehalfOf}on charger ${friendlyName}`,
         channels,
         source_ids,
     });
@@ -253,7 +298,7 @@ export const stopChargingSession = async (
     return {
         ok: true,
         value: {
-            wattHoursUsed,
+            wattHoursUsed: energyWattHoursUsed,
             duration,
             price,
         },

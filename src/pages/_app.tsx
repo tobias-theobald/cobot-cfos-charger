@@ -6,6 +6,7 @@ import '@/styles/app.css';
 
 import { CssBaseline } from '@mui/material';
 import type { AppType } from 'next/app';
+import { SnackbarProvider } from 'notistack';
 
 import { trpc } from '@/trpc-client';
 
@@ -13,7 +14,9 @@ const MyApp: AppType = ({ Component, pageProps }) => {
     return (
         <>
             <CssBaseline />
-            <Component {...pageProps} />
+            <SnackbarProvider>
+                <Component {...pageProps} />
+            </SnackbarProvider>
         </>
     );
 };
