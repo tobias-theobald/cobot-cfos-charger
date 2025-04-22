@@ -12,8 +12,8 @@ export default function IframeAdmin() {
     const [settingsOpen, setSettingsOpen] = useState(false);
     const { enqueueSnackbar } = useSnackbar();
 
-    const getWallboxStatusQuery = trpc.getWallboxStatus.useQuery(undefined, {
-        refetchInterval: 3000,
+    const getWallboxStatusQuery = trpc.getWallboxesStatusWithChargingSession.useQuery(undefined, {
+        refetchInterval: 30000,
     });
 
     // Create a mapping of charger IDs to friendly names
@@ -24,7 +24,7 @@ export default function IframeAdmin() {
     // Helper to get charger name
     const getChargerName = (chargerId: string) => chargerNameById[chargerId] || chargerId;
 
-    const startChargingMutation = trpc.startCharging.useMutation({
+    const startChargingMutation = trpc.startChargingWithSession.useMutation({
         onSuccess: (_, variables) => {
             enqueueSnackbar(`Charging started successfully on ${getChargerName(variables.chargerId)}`, {
                 variant: 'success',
@@ -35,8 +35,14 @@ export default function IframeAdmin() {
                 variant: 'error',
             });
         },
+        onSettled: () => {
+            // Refetch the wallbox status after starting charging
+            getWallboxStatusQuery.refetch().catch(() => {
+                // nop, handle error in the query
+            });
+        },
     });
-    const stopChargingMutation = trpc.stopCharging.useMutation({
+    const stopChargingMutation = trpc.stopChargingWithSession.useMutation({
         onSuccess: (_, variables) => {
             enqueueSnackbar(`Charging stopped successfully on ${getChargerName(variables.chargerId)}`, {
                 variant: 'success',
@@ -47,12 +53,20 @@ export default function IframeAdmin() {
                 variant: 'error',
             });
         },
+        onSettled: () => {
+            // Refetch the wallbox status after starting charging
+            getWallboxStatusQuery.refetch().catch(() => {
+                // nop, handle error in the query
+            });
+        },
     });
     const getMembershipsQuery = trpc.getMemberships.useQuery(undefined, {
         // This API is heavily rate-limited and unlikely to change much, so we can cache it until the user reloads, probably
         refetchOnReconnect: false,
         refetchInterval: false,
         refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchIntervalInBackground: false,
     });
     const wallboxStateLoading =
         getWallboxStatusQuery.isLoading || startChargingMutation.isLoading || stopChargingMutation.isLoading;
@@ -78,15 +92,15 @@ export default function IframeAdmin() {
     );
 
     const handleStartCharging = useCallback(
-        (chargerId: string, membershipId: string) => {
-            startChargingMutation.mutate({ chargerId, membershipId });
+        async (chargerId: string, membershipId: string) => {
+            await startChargingMutation.mutateAsync({ chargerId, membershipId });
         },
         [startChargingMutation],
     );
 
     const handleStopCharging = useCallback(
-        (chargerId: string) => {
-            stopChargingMutation.mutate({ chargerId });
+        async (chargerId: string) => {
+            await stopChargingMutation.mutateAsync({ chargerId });
         },
         [stopChargingMutation],
     );

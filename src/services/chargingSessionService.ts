@@ -4,8 +4,10 @@ import type { ValueOrError } from '@/types/util';
 import type { CobotSpaceSettings } from '@/types/zod/other';
 import { ChargingSessionBookingEndComment, ChargingSessionBookingStartComment } from '@/types/zod/other';
 
-export type BookingComponentsForChargingSession = { bookingId: string; from: Date; to: Date };
+export type BookingComponentsForChargingSession = { bookingId: string; from: string; to: string };
 export type RunningChargingSessionInBooking = ChargingSessionBookingStartComment & BookingComponentsForChargingSession;
+export type CompletedChargingSessionInBooking = ChargingSessionBookingEndComment & BookingComponentsForChargingSession;
+
 export const getCurrentChargingSession = async (
     cobotSpaceSettings: CobotSpaceSettings,
     chargerId: string,
@@ -60,7 +62,7 @@ export const getCurrentChargingSession = async (
     }
     return {
         ok: true,
-        value: { ...bookingComment.data, bookingId, from: new Date(from), to: new Date(to) },
+        value: { ...bookingComment.data, bookingId, from, to },
     };
 };
 
@@ -96,12 +98,7 @@ export const getHistoricChargingSessions = async (
     to: Date,
     chargerIds: string[] | null,
     cobotMembershipId: string | null | undefined,
-): Promise<
-    ValueOrError<
-        ((ChargingSessionBookingEndComment | ChargingSessionBookingStartComment) &
-            BookingComponentsForChargingSession)[]
-    >
-> => {
+): Promise<ValueOrError<(RunningChargingSessionInBooking | CompletedChargingSessionInBooking)[]>> => {
     const {
         accessToken: cobotSpaceAccessToken,
         spaceSubdomain: cobotSpaceSubdomain,
@@ -131,8 +128,7 @@ export const getHistoricChargingSessions = async (
         ),
     );
 
-    const bookings: ((ChargingSessionBookingEndComment | ChargingSessionBookingStartComment) &
-        BookingComponentsForChargingSession)[] = [];
+    const bookings: (RunningChargingSessionInBooking | CompletedChargingSessionInBooking)[] = [];
     for (const bookingsForCharger of listBookingResults) {
         if (!bookingsForCharger.ok) {
             return bookingsForCharger;
@@ -164,8 +160,8 @@ export const getHistoricChargingSessions = async (
                 bookings.push({
                     ...bookingComment.data,
                     bookingId,
-                    from: new Date(bookingFrom),
-                    to: new Date(bookingTo),
+                    from: bookingFrom,
+                    to: bookingTo,
                 });
                 continue;
             }
@@ -175,8 +171,8 @@ export const getHistoricChargingSessions = async (
                 bookings.push({
                     ...bookingCommentStart.data,
                     bookingId,
-                    from: new Date(bookingFrom),
-                    to: new Date(bookingTo),
+                    from: bookingFrom,
+                    to: bookingTo,
                 });
             }
         }

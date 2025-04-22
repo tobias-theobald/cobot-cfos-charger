@@ -2,13 +2,23 @@ import { getMemberships, getResources } from '@/trpc-server/cobot';
 import { getCobotSpaceSettings, setCobotSpaceSettings } from '@/trpc-server/settings';
 
 import { router } from './base';
-import { getChargingSessionHistory, getWallboxStatus, startCharging, stopCharging } from './charging';
+import {
+    getChargingSessionHistory,
+    getWallboxesStatusWithChargingSession,
+    startChargingWithoutSession,
+    startChargingWithSession,
+    stopChargingWithoutSession,
+    stopChargingWithSession,
+} from './charging';
 
 export const appRouter = router({
-    getWallboxStatus,
+    getWallboxesStatusWithChargingSession,
     getChargingSessionHistory,
-    startCharging,
-    stopCharging,
+    startChargingWithSession,
+    stopChargingWithSession,
+
+    startChargingWithoutSession,
+    stopChargingWithoutSession,
 
     getMemberships,
     getResources,

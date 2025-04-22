@@ -13,6 +13,7 @@ interface MembershipSelectionDialogProps {
     memberships: CobotMembership[];
     selectedMembershipId: string | null;
     onMembershipChange: (membership: string | null) => void;
+    loading: boolean;
     onConfirm: () => void;
     title?: string;
     confirmButtonText?: string;
@@ -34,6 +35,7 @@ const MembershipSelectionDialog: React.FC<MembershipSelectionDialogProps> = ({
     onConfirm,
     title = 'Select Member',
     confirmButtonText = 'Confirm',
+    loading,
 }) => {
     const previousOpen = usePrevious(open);
 
@@ -67,7 +69,12 @@ const MembershipSelectionDialog: React.FC<MembershipSelectionDialogProps> = ({
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>Cancel</Button>
-                <Button onClick={onConfirm} variant="contained" disabled={!selectedMembershipId}>
+                <Button
+                    onClick={onConfirm}
+                    variant="contained"
+                    disabled={!selectedMembershipId || loading}
+                    loading={loading}
+                >
                     {confirmButtonText}
                 </Button>
             </DialogActions>

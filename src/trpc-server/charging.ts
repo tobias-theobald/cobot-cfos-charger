@@ -1,28 +1,17 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import { getWallboxes } from '@/api/cfos';
+import { cfosAuthorizeWallbox, cfosDeauthorizeWallbox, getWallboxes } from '@/api/cfos';
 import { MEMBERSHIP_ID_NOBODY } from '@/constants';
 import { startChargingSession, stopChargingSession } from '@/services/chargingControlService';
-import {
-    getCurrentChargingSessions,
-    getHistoricChargingSessions,
-    type RunningChargingSessionInBooking,
-} from '@/services/chargingSessionService';
-import type { ValueOrError } from '@/types/util';
-import type { GetWallboxesResponse } from '@/types/zod/cfos';
+import { getCurrentChargingSessions, getHistoricChargingSessions } from '@/services/chargingSessionService';
+import type { WallboxStatusWithChargingSession } from '@/types/trpc';
 import { CobotMembershipId } from '@/types/zod/cobotApi';
 
 import { adminProcedure } from './base';
 
-export const getWallboxStatus = adminProcedure.query(
-    async ({
-        ctx,
-    }): Promise<
-        (GetWallboxesResponse[number] & {
-            chargingSession: ValueOrError<RunningChargingSessionInBooking | null>;
-        })[]
-    > => {
+export const getWallboxesStatusWithChargingSession = adminProcedure.query(
+    async ({ ctx }): Promise<WallboxStatusWithChargingSession[]> => {
         const [wallboxesResult, chargingSessionsResult] = await Promise.all([
             getWallboxes(),
             getCurrentChargingSessions(ctx.cobotSpaceSettings),
@@ -45,7 +34,7 @@ export const getWallboxStatus = adminProcedure.query(
     },
 );
 
-export const startCharging = adminProcedure
+export const startChargingWithSession = adminProcedure
     .input(z.object({ chargerId: z.string(), membershipId: CobotMembershipId.or(z.literal(MEMBERSHIP_ID_NOBODY)) }))
     .mutation(async ({ ctx, input }) => {
         const result = await startChargingSession(
@@ -63,7 +52,7 @@ export const startCharging = adminProcedure
         return result.value;
     });
 
-export const stopCharging = adminProcedure
+export const stopChargingWithSession = adminProcedure
     .input(z.object({ chargerId: z.string() }))
     .mutation(async ({ ctx, input }) => {
         const result = await stopChargingSession(ctx.userDetails, ctx.cobotSpaceSettings, input.chargerId);
@@ -75,6 +64,44 @@ export const stopCharging = adminProcedure
         }
         return result.value;
     });
+
+export const startChargingWithoutSession = adminProcedure
+    .input(z.object({ chargerId: z.string() }))
+    .mutation(async ({ input }) => {
+        const result = await cfosAuthorizeWallbox(input.chargerId);
+        if (!result.ok) {
+            throw new TRPCError({
+                code: 'INTERNAL_SERVER_ERROR',
+                message: `Error starting charging without session: ${result.error}`,
+            });
+        }
+    });
+
+export const stopChargingWithoutSession = adminProcedure
+    .input(z.object({ chargerId: z.string() }))
+    .mutation(async ({ input }) => {
+        const result = await cfosDeauthorizeWallbox(input.chargerId);
+        if (!result.ok) {
+            throw new TRPCError({
+                code: 'INTERNAL_SERVER_ERROR',
+                message: `Error stopping charging without session: ${result.error}`,
+            });
+        }
+        return result.value;
+    });
+
+// export const stopChargingBooking = adminProcedure
+//     .input(z.object({ bookingId: z.string(), energyStop: z.number() }))
+//     .mutation(async ({ input }) => {
+//         const result = await ...
+//         if (!result.ok) {
+//             throw new TRPCError({
+//                 code: 'INTERNAL_SERVER_ERROR',
+//                 message: `Error stopping charging without session: ${result.error}`,
+//             });
+//         }
+//         return result.value;
+//     });
 
 export const getChargingSessionHistory = adminProcedure
     .input(
@@ -99,4 +126,5 @@ export const getChargingSessionHistory = adminProcedure
                 message: `Error fetching charging session history: ${result.error}`,
             });
         }
+        return result.value;
     });

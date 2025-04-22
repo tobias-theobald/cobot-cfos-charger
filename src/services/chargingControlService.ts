@@ -53,6 +53,7 @@ export const startChargingSession = async (
     const bookingStartComment: ChargingSessionBookingStartComment = {
         totalEnergyWattHoursStart: totalEnergyWattHours,
         cobotUserIdStarted: userDetails.id,
+        cobotUserEmailStarted: userDetails.email,
         cobotMembershipId,
         chargerId,
     };
@@ -60,7 +61,7 @@ export const startChargingSession = async (
         from: new Date().toISOString(),
         to: new Date(Date.now() + BOOKING_DURATION_AT_START).toISOString(),
         title: `EV charging session (usage TBD)`,
-        comments: JSON.stringify(bookingStartComment),
+        comments: JSON.stringify(bookingStartComment, null, 2),
         membership_id,
         can_cancel: false,
         can_change: false,
@@ -154,6 +155,7 @@ export const stopChargingSession = async (
         totalEnergyWattHoursStart,
         cobotMembershipId,
         cobotUserIdStarted,
+        cobotUserEmailStarted,
         bookingId,
         chargerId: chargerIdFromBooking,
     } = currentBooking;
@@ -164,10 +166,16 @@ export const stopChargingSession = async (
 
     const energyWattHoursUsed = totalEnergyWattHoursEnd - totalEnergyWattHoursStart;
     const energyKilowattHoursUsed = energyWattHoursUsed / 1000;
-    let price = cobotMembershipId === null ? 0 : energyKilowattHoursUsed * pricePerKWh;
-    const duration = (now.getTime() - new Date(currentBooking.from).getTime()) / 1000; // seconds
-    const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+    const fromDate = new Date(currentBooking.from);
+    const duration = (now.getTime() - fromDate.getTime()) / 1000; // seconds
+    // session ends 1 minute before now to allow new bookings immediately, but not sooner than when they started and always at least 1 minute
 
+    let toDate = new Date(now.getTime() - 60 * 1000);
+    if (toDate < fromDate) {
+        toDate = new Date(fromDate.getTime() + 60 * 1000);
+    }
+
+    let price = cobotMembershipId === null ? 0 : energyKilowattHoursUsed * pricePerKWh;
     if (price < 0) {
         console.warn('Price is negative, setting to 0');
         price = 0;
@@ -179,15 +187,17 @@ export const stopChargingSession = async (
         energyWattHoursUsed,
         cobotMembershipId,
         cobotUserIdStarted,
+        cobotUserEmailStarted,
         cobotUserIdEnded: userDetails?.id ?? null,
+        cobotUserEmailEnded: userDetails?.email ?? null,
         price: price.toFixed(2),
         chargerId,
     };
 
     const updateBookingResult = await updateBooking(cobotSpaceAccessToken, cobotSpaceSubdomain, bookingId, {
-        to: oneMinuteAgo.toISOString(), // This will allow a new charging session to be started immediately
+        to: toDate.toISOString(), // This will allow a new charging session to be started immediately
         title: `EV charging session (${energyKilowattHoursUsed.toFixed(3)} kWh)`,
-        comments: JSON.stringify(bookingEndComment),
+        comments: JSON.stringify(bookingEndComment, null, 2),
         has_custom_price: true,
         price,
     });

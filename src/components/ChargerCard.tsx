@@ -1,24 +1,26 @@
 import {
-    Battery80 as BatteryMedium,
-    BatteryChargingFull as BatteryCharging,
-    BatteryFull,
+    BatteryChargingFull as StatusIconVehicleCharging,
+    ElectricCar as StatusIconVehiclePresent,
     PlayArrow as PlayCircle,
-    SignalWifiOff as WifiOff,
+    PowerOff as StatusIconFree,
+    SignalWifiOff as StatusIconChargerOffline,
     Stop as StopCircle,
-    Warning as AlertTriangle,
+    Warning as StatusIconError,
 } from '@mui/icons-material';
 import { Box, Button, Card, CardContent, Chip, Typography } from '@mui/material';
 import { useState } from 'react';
 
 import MembershipSelectionDialog from '@/components/MembershipSelectionDialog';
-import type { EvseWallboxState, GetWallboxesResponse } from '@/types/zod/cfos';
+import type { RunningChargingSessionInBooking } from '@/services/chargingSessionService';
+import type { WallboxStatusWithChargingSession } from '@/types/trpc';
+import type { EvseWallboxState } from '@/types/zod/cfos';
 import type { CobotApiResponseGetMemberships } from '@/types/zod/cobotApi';
 
 interface ChargerCardProps {
-    charger: GetWallboxesResponse[number];
+    charger: WallboxStatusWithChargingSession;
     memberships: CobotApiResponseGetMemberships;
-    onStartCharging: (chargerId: string, membershipId: string) => void;
-    onStopCharging: (chargerId: string) => void;
+    onStartCharging: (chargerId: string, membershipId: string) => Promise<void>;
+    onStopCharging: (chargerId: string) => Promise<void>;
     loading: boolean;
     otherError?: string;
 }
@@ -28,41 +30,42 @@ const getStatusColor = (status: EvseWallboxState): string => {
         case 'free':
             return 'success.main';
         case 'vehiclePresent':
-            return 'warning.main';
+            return 'info.main';
         case 'charging':
-            return 'primary.main';
+            return 'secondary.main';
         case 'offline':
             return 'text.disabled';
         case 'error':
             return 'error.main';
         default:
-            return 'text.primary';
+            return 'error.main'; // Fallback color for unknown status
     }
 };
 
 const getStatusIcon = (status: EvseWallboxState) => {
     switch (status) {
         case 'free':
-            return <BatteryFull />;
+            return <StatusIconFree />;
         case 'vehiclePresent':
-            return <BatteryMedium />;
+            return <StatusIconVehiclePresent />;
         case 'charging':
-            return <BatteryCharging />;
+            return <StatusIconVehicleCharging />;
         case 'offline':
-            return <WifiOff />;
+            return <StatusIconChargerOffline />;
         case 'error':
-            return <AlertTriangle />;
+            return <StatusIconError />;
         default:
-            return <BatteryFull />;
+            // TODO this should never happen, but ideally we'd send ourselves a message
+            return <StatusIconError />;
     }
 };
 
 const getStatusText = (status: EvseWallboxState): string => {
     switch (status) {
         case 'free':
-            return 'Available';
+            return 'No Vehicle Connected';
         case 'vehiclePresent':
-            return 'Vehicle Connected';
+            return 'Vehicle Connected, Not Charging';
         case 'charging':
             return 'Charging';
         case 'offline':
@@ -74,10 +77,10 @@ const getStatusText = (status: EvseWallboxState): string => {
     }
 };
 
-const formatDuration = (isoString: string) => {
-    const startTime = new Date(isoString);
+const formatDurationFromNow = (fromIsoString: string) => {
+    const from = new Date(fromIsoString);
     const now = new Date();
-    const diffMs = now.getTime() - startTime.getTime();
+    const diffMs = now.getTime() - from.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const hours = Math.floor(diffMins / 60);
     const mins = diffMins % 60;
@@ -85,42 +88,52 @@ const formatDuration = (isoString: string) => {
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 };
 
-const ChargerCard: React.FC<ChargerCardProps> = ({
+const ChargerCard = ({
     charger,
     memberships,
     onStartCharging,
     onStopCharging,
     loading,
     otherError,
-}) => {
+}: ChargerCardProps) => {
     const [openDialog, setOpenDialog] = useState(false);
     const [selectedMembershipId, setSelectedMembershipId] = useState<string | null>(null);
 
     const handleStartCharging = () => {
-        if (selectedMembershipId) {
-            onStartCharging(charger.id, selectedMembershipId);
-            setOpenDialog(false);
-            setSelectedMembershipId(null);
+        if (!selectedMembershipId) {
+            return;
         }
+        onStartCharging(charger.id, selectedMembershipId)
+            .then(() => {
+                setOpenDialog(false);
+                setSelectedMembershipId(null);
+            })
+            .catch(() => {
+                // nop, handled elsewhere
+            });
     };
 
     const handleStopCharging = () => {
-        onStopCharging(charger.id);
+        onStopCharging(charger.id).catch(() => {
+            // nop, handled elsewhere
+        });
     };
 
-    const calculateEnergyUsed = () => {
-        // TODO implement
-        // if (charger.chargingEnabled) {
-        //     return (charger.activeSession.currentMeterValue - charger.activeSession.initialMeterValue).toFixed(3);
-        // }
-        return '0.000';
+    // Calculate energy used in a charging session
+    const calculateEnergyUsed = (startEnergy: number, currentEnergy: number): string => {
+        return ((currentEnergy - startEnergy) / 1000).toFixed(3);
     };
 
     // Check if charger is in a state where charging can be started
-    const canStartCharging = charger.evseWallboxState === 'free' || charger.evseWallboxState === 'vehiclePresent';
+    const canStartCharging =
+        charger.chargingSession.ok &&
+        charger.chargingSession.value === null &&
+        (charger.evseWallboxState === 'free' || charger.evseWallboxState === 'vehiclePresent');
 
     // Check if charger is in a state where charging can be stopped
-    const canStopCharging = charger.evseWallboxState === 'charging';
+    const canStopCharging =
+        (charger.chargingSession.ok && charger.chargingSession.value !== null) ||
+        charger.evseWallboxState === 'charging';
 
     // Check if charger is in an error state or offline
     const isInErrorState =
@@ -168,25 +181,54 @@ const ChargerCard: React.FC<ChargerCardProps> = ({
                     <Typography variant="h6">{(charger.totalEnergyWattHours / 1000).toFixed(3)} kWh</Typography>
                 </Box>
 
-                {/* TODO implement activeSession */}
-                {/*{charger.activeSession && (*/}
-                {/*    <Box*/}
-                {/*        sx={{*/}
-                {/*            mb: 2,*/}
-                {/*            p: 2,*/}
-                {/*            bgcolor: 'primary.light',*/}
-                {/*            color: 'primary.contrastText',*/}
-                {/*            borderRadius: 1,*/}
-                {/*        }}*/}
-                {/*    >*/}
-                {/*        <Typography variant="subtitle2">Active Session</Typography>*/}
-                {/*        <Typography variant="body2">User: {charger.activeSession.user.name}</Typography>*/}
-                {/*        <Typography variant="body2">*/}
-                {/*            Duration: {formatDuration(charger.activeSession.startTime)}*/}
-                {/*        </Typography>*/}
-                {/*        <Typography variant="body2">Energy Used: {calculateEnergyUsed()} kWh</Typography>*/}
-                {/*    </Box>*/}
-                {/*)}*/}
+                {charger.chargingSession.ok && charger.chargingSession.value && (
+                    <Box
+                        sx={{
+                            mb: 2,
+                            p: 2,
+                            bgcolor: 'primary.light',
+                            color: 'primary.contrastText',
+                            borderRadius: 1,
+                        }}
+                    >
+                        <Typography variant="subtitle2">Active Session</Typography>
+                        <Typography variant="body2">
+                            Membership ID:{' '}
+                            {charger.chargingSession.value.cobotMembershipId
+                                ? (memberships.find(
+                                      ({ id }) =>
+                                          id ===
+                                          (charger.chargingSession as { value: RunningChargingSessionInBooking }).value
+                                              .cobotMembershipId,
+                                  )?.name ?? charger.chargingSession.value.cobotMembershipId)
+                                : 'Free Charge'}
+                        </Typography>
+                        <Typography variant="body2">
+                            Started by: {charger.chargingSession.value.cobotUserEmailStarted}
+                        </Typography>
+                        <Typography variant="body2">
+                            Start Time: {new Date(charger.chargingSession.value.from).toLocaleString()}
+                        </Typography>
+                        <Typography variant="body2">
+                            Latest End: {new Date(charger.chargingSession.value.to).toLocaleString()}
+                        </Typography>
+                        <Typography variant="body2">
+                            Duration: {formatDurationFromNow(charger.chargingSession.value.from)}
+                        </Typography>
+                        <Typography variant="body2">
+                            Energy at start:{' '}
+                            {(charger.chargingSession.value.totalEnergyWattHoursStart / 1000).toFixed(3)} kWh
+                        </Typography>
+                        <Typography variant="body2">
+                            Energy used:{' '}
+                            {calculateEnergyUsed(
+                                charger.chargingSession.value.totalEnergyWattHoursStart,
+                                charger.totalEnergyWattHours,
+                            )}{' '}
+                            kWh
+                        </Typography>
+                    </Box>
+                )}
 
                 {/* Spacer to push buttons to bottom */}
                 <Box sx={{ flexGrow: 1 }} />
@@ -239,6 +281,7 @@ const ChargerCard: React.FC<ChargerCardProps> = ({
                 onConfirm={handleStartCharging}
                 title="Select Member for Charging"
                 confirmButtonText="Start Charging"
+                loading={loading}
             />
         </Card>
     );

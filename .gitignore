@@ -21,6 +21,7 @@
 *.pem
 *.iml
 .idea
+CLAUDE.md
 
 # debug
 npm-debug.log*
