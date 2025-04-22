@@ -39,6 +39,7 @@ export const ChargingSessionBookingEndComment = ChargingSessionBookingStartComme
     totalEnergyWattHoursEnd: z.number(),
     energyWattHoursUsed: z.number(),
     price: z.string(),
+    autoStopped: z.boolean().optional(),
 });
 export type ChargingSessionBookingEndComment = z.infer<typeof ChargingSessionBookingEndComment>;
 

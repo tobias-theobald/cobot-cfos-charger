@@ -41,7 +41,7 @@ export const startChargingWithSession = adminProcedure
             ctx.userDetails,
             ctx.cobotSpaceSettings,
             input.chargerId,
-            input.membershipId,
+            input.membershipId === MEMBERSHIP_ID_NOBODY ? null : input.membershipId,
         );
         if (!result.ok) {
             throw new TRPCError({

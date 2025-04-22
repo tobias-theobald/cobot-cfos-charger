@@ -40,12 +40,10 @@ export const startChargingSession = async (
     }
 
     // TODO check with real hardware if these validations make sense
-    const { evseWallboxState, friendlyName, totalEnergyWattHours, chargingEnabled } = wallbox.value;
+    const { evseWallboxState, friendlyName, totalEnergyWattHours } = wallbox.value;
     if (evseWallboxState !== 'free' && evseWallboxState !== 'vehiclePresent') {
         return { ok: false, error: `Wallbox with id ${chargerId} is not available` };
     }
-
-    // TODO check for open sessions
 
     const membership_id = cobotMembershipId === null ? undefined : cobotMembershipId;
 
@@ -70,6 +68,7 @@ export const startChargingSession = async (
         return createBookingResult;
     }
     console.log(`Created booking for resource ${resourceId} with id ${createBookingResult.value.id}`);
+    // at this point, the booking is also allowed, so we can start the charging. If there were an active session, we wouldn't reach this point
 
     const authorizeWallboxResult = await cfosAuthorizeWallbox(chargerId);
     if (!authorizeWallboxResult.ok) {

@@ -86,4 +86,29 @@ export class ObjectStore<K extends Record<string, unknown>, T extends K, D = T> 
         }
         return { ok: true, value: undefined };
     }
+
+    async getAll(): Promise<ValueOrError<T[]>> {
+        const prefix = `${this.objectKeyPrefix}${OBJECT_KEY_SEPARATOR}`;
+        let allValues: [string, unknown][];
+        try {
+            allValues = await this.keyValueStore.list(prefix);
+        } catch (e) {
+            return logErrorAndReturnCleanMessage('Error listing values in DB', e);
+        }
+
+        const parsedValues: T[] = [];
+        for (const [key, value] of allValues) {
+            if (!key.startsWith(`${this.objectKeyPrefix}${OBJECT_KEY_SEPARATOR}`)) {
+                // This should not happen, but just in case
+                continue;
+            }
+            const valueParseResult = this.zodType.safeParse(value);
+            if (!valueParseResult.success) {
+                console.error('Error parsing value in DB:', valueParseResult.error.format());
+                continue;
+            }
+            parsedValues.push(valueParseResult.data);
+        }
+        return { ok: true, value: parsedValues };
+    }
 }

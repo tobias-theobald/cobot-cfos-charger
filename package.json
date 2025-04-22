@@ -4,9 +4,9 @@
   "private": true,
   "prettier": "@resolution/prettier-config",
   "scripts": {
-    "dev": "next dev",
+    "dev": "tsx --env-file=.env server.ts",
     "build": "next build",
-    "start": "next start",
+    "start": "NODE_ENV=production tsx --env-file=.env server.ts",
     "lint": "eslint src",
     "lint:fix": "eslint --fix src",
     "typecheck": "tsc --noEmit"
@@ -41,6 +41,7 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.28",
     "prettier": "^3.5.3",
+    "tsx": "^4.19.3",
     "typescript": "^5.8.3"
   },
   "packageManager": "yarn@4.9.0+sha512.5f5f00843eae735dfab6f0442524603e987ceca55e98b36eb0120f4e58908e5b1406545321e46627dca97d15d562f23dc13fb96cabd4e6bc92d379f619001e4e"

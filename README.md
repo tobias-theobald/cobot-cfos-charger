@@ -93,14 +93,10 @@ Achieving these goals likely necessitates steps like these:
 * Verify with the actual hardware:
   * if stopping the charging session works properly (as this was not tested while we had hardware access)
   * what the evseWallboxState and chargingEnabled values are and how they play together. Adjust Code in ChargerCard and chargingSessionService accordingly.
-* Implement charging session history
-  * Do this with the Cobot Bookings API. The idea is to add the chargers as bookable resources in Cobot and then use the Bookings API to create bookings for the charging sessions. This way, we can keep track of the charging sessions and their costs.
-  * Keep track of current charging sessions
-  * Consider how to know when the charging session ends when it is not stopped via our API (regular polling?)
-* Implement regularly scheduled job to check if a charger is still connected
 * Polish
-  * Error handling
+  * Error handling (error should not make it to the UI like this)
   * All the TODOs in the code
+  * Charging sessions that have been ended and that are very short need to be handled somehow. They currently show as active sessions.
 
 # Further reading
 

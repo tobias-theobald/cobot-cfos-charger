@@ -156,15 +156,15 @@ export default function IframeAdmin() {
     );
 
     const handleStartDirectCharging = useCallback(
-        async (chargerId: string) => {
-            await startChargingWithoutSessionMutation.mutateAsync({ chargerId });
+        (chargerId: string) => {
+            startChargingWithoutSessionMutation.mutate({ chargerId });
         },
         [startChargingWithoutSessionMutation],
     );
 
     const handleStopDirectCharging = useCallback(
-        async (chargerId: string) => {
-            await stopChargingWithoutSessionMutation.mutateAsync({ chargerId });
+        (chargerId: string) => {
+            stopChargingWithoutSessionMutation.mutate({ chargerId });
         },
         [stopChargingWithoutSessionMutation],
     );

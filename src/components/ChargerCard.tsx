@@ -21,8 +21,8 @@ interface ChargerCardProps {
     memberships: CobotApiResponseGetMemberships;
     onStartCharging: (chargerId: string, membershipId: string) => Promise<void>;
     onStopCharging: (chargerId: string) => Promise<void>;
-    onStartDirectCharging: (chargerId: string) => Promise<void>;
-    onStopDirectCharging: (chargerId: string) => Promise<void>;
+    onStartDirectCharging: (chargerId: string) => void;
+    onStopDirectCharging: (chargerId: string) => void;
     expertMode: boolean;
     loading: boolean;
     otherError?: string;
