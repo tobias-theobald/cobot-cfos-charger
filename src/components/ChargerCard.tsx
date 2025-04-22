@@ -21,6 +21,9 @@ interface ChargerCardProps {
     memberships: CobotApiResponseGetMemberships;
     onStartCharging: (chargerId: string, membershipId: string) => Promise<void>;
     onStopCharging: (chargerId: string) => Promise<void>;
+    onStartDirectCharging: (chargerId: string) => Promise<void>;
+    onStopDirectCharging: (chargerId: string) => Promise<void>;
+    expertMode: boolean;
     loading: boolean;
     otherError?: string;
 }
@@ -93,6 +96,9 @@ const ChargerCard = ({
     memberships,
     onStartCharging,
     onStopCharging,
+    onStartDirectCharging,
+    onStopDirectCharging,
+    expertMode,
     loading,
     otherError,
 }: ChargerCardProps) => {
@@ -233,40 +239,74 @@ const ChargerCard = ({
                 {/* Spacer to push buttons to bottom */}
                 <Box sx={{ flexGrow: 1 }} />
 
-                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 3 }}>
-                    {canStartCharging && !isInErrorState && (
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<PlayCircle />}
-                            onClick={() => setOpenDialog(true)}
-                            fullWidth
-                            disabled={loading}
-                            loading={loading}
-                        >
-                            Start Charging
-                        </Button>
-                    )}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 3 }}>
+                    {/* Normal charging controls */}
+                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                        {canStartCharging && !isInErrorState && (
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                startIcon={<PlayCircle />}
+                                onClick={() => setOpenDialog(true)}
+                                fullWidth
+                                disabled={loading}
+                                loading={loading}
+                            >
+                                Start Charging Session
+                            </Button>
+                        )}
 
-                    {canStopCharging && (
-                        <Button
-                            variant="contained"
-                            color="error"
-                            startIcon={<StopCircle />}
-                            onClick={handleStopCharging}
-                            fullWidth
-                            disabled={loading}
-                            loading={loading}
-                        >
-                            Stop Charging
-                        </Button>
-                    )}
+                        {canStopCharging && (
+                            <Button
+                                variant="contained"
+                                color="error"
+                                startIcon={<StopCircle />}
+                                onClick={handleStopCharging}
+                                fullWidth
+                                disabled={loading}
+                                loading={loading}
+                            >
+                                Stop Charging Session
+                            </Button>
+                        )}
 
-                    {isInErrorState && (
-                        <Button variant="outlined" color="error" fullWidth disabled loading={loading}>
-                            {otherError ??
-                                (charger.evseWallboxState === 'offline' ? 'Charger Offline' : 'Charger Error')}
-                        </Button>
+                        {isInErrorState && (
+                            <Button variant="outlined" color="error" fullWidth disabled loading={loading}>
+                                {otherError ??
+                                    (charger.evseWallboxState === 'offline' ? 'Charger Offline' : 'Charger Error')}
+                            </Button>
+                        )}
+                    </Box>
+
+                    {/* Expert mode charging controls */}
+                    {expertMode && (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                            <Button
+                                variant="outlined"
+                                color="warning"
+                                startIcon={<PlayCircle />}
+                                onClick={() => onStartDirectCharging(charger.id)}
+                                fullWidth
+                                disabled={loading || charger.evseWallboxState === 'offline'}
+                                loading={loading}
+                                size="small"
+                            >
+                                Start Charger Without Session
+                            </Button>
+
+                            <Button
+                                variant="outlined"
+                                color="warning"
+                                startIcon={<StopCircle />}
+                                onClick={() => onStopDirectCharging(charger.id)}
+                                fullWidth
+                                disabled={loading || charger.evseWallboxState === 'offline'}
+                                loading={loading}
+                                size="small"
+                            >
+                                Stop Charger Without Session
+                            </Button>
+                        </Box>
                     )}
                 </Box>
             </CardContent>

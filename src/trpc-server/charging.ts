@@ -106,10 +106,10 @@ export const stopChargingWithoutSession = adminProcedure
 export const getChargingSessionHistory = adminProcedure
     .input(
         z.object({
-            from: z.string().date(),
-            to: z.string().date(),
+            from: z.string().datetime(),
+            to: z.string().datetime(),
             chargerIds: z.string().array().nullable(),
-            cobotMembershipId: CobotMembershipId.nullish(),
+            cobotMembershipId: CobotMembershipId.nullable(),
         }),
     )
     .query(async ({ ctx, input }) => {
@@ -118,7 +118,7 @@ export const getChargingSessionHistory = adminProcedure
             new Date(input.from),
             new Date(input.to),
             input.chargerIds,
-            input.cobotMembershipId,
+            input.cobotMembershipId === MEMBERSHIP_ID_NOBODY ? undefined : input.cobotMembershipId,
         );
         if (!result.ok) {
             throw new TRPCError({
